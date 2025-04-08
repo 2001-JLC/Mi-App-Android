@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:padding="8dp"
+    tools:context=".auth.LoginActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="16dp">
+
+        <ImageView
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:layout_marginBottom="24dp"
+            android:contentDescription="@string/logo_de_la_aplicaci_n"
+            android:src="@mipmap/logo"
+            tools:ignore="ImageContrastCheck" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sistema_de_monitoreo"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/amarillo_suave"
+            android:layout_marginBottom="32dp"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilUsername"
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:hint="@string/usuario"
+            app:startIconDrawable="@drawable/usuario"
+            app:helperText="@string/ingrese_su_usuario"
+            app:helperTextTextColor="@color/verde_caza"
+            app:hintTextColor="@color/white"
+            app:boxStrokeColor="@color/white">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etUsername"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:importantForAccessibility="yes"
+                android:contentDescription="@string/campo_usuario"
+                android:textColor="@color/white"
+                android:textColorHint="@color/gray_600"
+                android:focusable="true"
+                android:focusableInTouchMode="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilPassword"
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:hint="@string/contrase_a"
+            app:startIconDrawable="@drawable/password"
+            app:helperText="@string/ingrese_su_contrase_a"
+            app:helperTextTextColor="@color/verde_caza"
+            app:hintTextColor="@color/white"
+            app:boxStrokeColor="@color/white">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:importantForAccessibility="yes"
+                android:contentDescription="@string/campo_contrase_a"
+                android:textColor="@color/white"
+                android:textColorHint="@color/gray_600"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilWorkOrder"
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:hint="@string/orden_de_trabajo"
+            app:startIconDrawable="@drawable/work_order"
+            app:helperText="@string/ingrese_numero_orden"
+            app:helperTextTextColor="@color/verde_caza"
+            app:hintTextColor="@color/white"
+            app:boxStrokeColor="@color/white">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etWorkOrder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:importantForAccessibility="yes"
+                android:contentDescription="@string/campo_orden_trabajo"
+                android:textColor="@color/white"
+                android:textColorHint="@color/gray_600"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLogin"
+            android:layout_width="300dp"
+            android:layout_height="56dp"
+            android:text="@string/iniciar_sesi_n"
+            android:textAllCaps="false"
+            android:textColor="@android:color/white"
+            app:backgroundTint="@color/verde_bosque"
+            style="@style/Widget.MaterialComponents.Button"
+            android:focusable="true"
+            android:clickable="true"/>
+    </LinearLayout>
+</ScrollView>

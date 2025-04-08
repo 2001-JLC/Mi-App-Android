@@ -1,0 +1,228 @@
+package com.example.asb.monitoring
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import com.example.asb.R
+import com.example.asb.databinding.ActivityMonitoringBinding
+import com.example.asb.mqtt.MqttCallbackHandler
+import com.example.asb.mqtt.MqttClientManager
+import android.graphics.Color
+import android.util.Log
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.LinearLayout
+import com.example.asb.models.DynamicEquipment
+import com.example.asb.utils.JsonParser
+
+class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
+    private lateinit var binding: ActivityMonitoringBinding
+    private lateinit var mqttManager: MqttClientManager
+    private lateinit var mqttTopic: String
+    private lateinit var equipmentType: String
+    private lateinit var jsonParser: JsonParser
+    private var ultimaPresion: Double? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMonitoringBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        jsonParser = JsonParser()
+
+        // 1. Obtener parámetros
+        mqttTopic = intent.getStringExtra("MQTT_TOPIC_DATA") ?: "001/0001/02/02/Datos"
+        equipmentType = intent.getStringExtra("EQUIPMENT_TYPE") ?: "02"
+        Log.d("EQUIPMENT_DEBUG", "Tipo de equipo recibido: $equipmentType")  // ← Añadir esto
+
+
+        // 2. Configurar MQTT
+        mqttManager = MqttClientManager("tcp://test.mosquitto.org:1883").apply {
+            setCallback(this@MonitoringActivity)
+            connect { success ->
+                if (success) subscribe(mqttTopic, 1)
+            }
+        }
+    }
+    override fun onResume() {
+        super.onResume()
+
+        // Verificación de visibilidad después de 1 segundo
+        binding.root.postDelayed({
+            Log.d("UI_DEBUG", "Estado de tvPresion - " +
+                    "Visibilidad: ${binding.tvPresion.visibility}, " +
+                    "Texto: ${binding.tvPresion.text}, " +
+                    "Está mostrado: ${binding.tvPresion.isShown}")
+
+            // Mover temporalmente a la parte superior (solo para debug)
+            (binding.tvPresion.parent as? ViewGroup)?.let { parent ->
+                parent.removeView(binding.tvPresion)
+                parent.addView(binding.tvPresion, 0) // Índice 0 = primera posición
+                Log.w("UI_DEBUG", "TextView movido a posición 0 forzadamente")
+            }
+        }, 1000)
+    }
+
+    override fun onMessageReceived(topic: String, message: String) {
+        Log.d("MQTT_TEST", "Mensaje recibido en topic $topic: $message")
+        runOnUiThread {
+            val response = jsonParser.parseCombinedData(message) ?: return@runOnUiThread
+
+            // --- Presión (Solo para SVV - 01) ---
+            if (equipmentType == "01") {
+                binding.tvPresion.visibility = View.VISIBLE  // Mostrar solo si es SVV
+                response.presion?.let {
+                    ultimaPresion = it  // Guardar último valor válido
+                    binding.tvPresion.text = getString(R.string.pressure_value, it)
+                } ?: run {
+                    // Mostrar último valor o "--" si es el primer mensaje
+                    binding.tvPresion.text = ultimaPresion?.let {
+                        getString(R.string.pressure_value, it)
+                    } ?: "--"
+                }
+            } else {
+                binding.tvPresion.visibility = View.GONE  // Ocultar para otros equipos
+            }
+
+            // --- Renderizar equipos ---
+            binding.equipmentContainer.removeAllViews()
+            response.equipos.forEach { equipo ->
+                mostrarEquipo(equipo.apply { tipo = equipmentType })
+            }
+        }
+    }
+    private fun mostrarEquipo(equipo: DynamicEquipment) {
+        val itemView = LayoutInflater.from(this)
+            .inflate(R.layout.item_pozo_dynamic, binding.equipmentContainer, false)
+
+        // Imagen según el tipo (usando equipo.tipo)
+        itemView.findViewById<ImageView>(R.id.ivEquipmentImage).setImageResource(
+            when(equipo.tipo) {
+                "01" -> R.mipmap.svv
+                "02" -> R.mipmap.bomba_pozo
+                "03" -> R.mipmap.hidro
+                "04" -> R.mipmap.carcamo_2b
+                else -> R.mipmap.asbombeo
+            }
+        )
+
+        // Nombre del equipo
+        itemView.findViewById<TextView>(R.id.tvNombre).text = equipo.nombre
+
+        // Mostrar datos dinámicos
+        val contenedor = itemView.findViewById<LinearLayout>(R.id.dynamicDataContainer)
+        contenedor.removeAllViews()
+
+        equipo.datos.forEach { (key, value) ->
+            TextView(this).apply {
+                text = getString(R.string.dynamic_data_format, key, value.toString())
+                setTextColor(Color.BLACK)
+                textSize = 16f
+            }.also { contenedor.addView(it) }
+        }
+
+        binding.equipmentContainer.addView(itemView)
+    }
+
+    override fun onConnectionSuccess() {
+        runOnUiThread {
+            binding.tvConnectionStatus.text = getString(R.string.connected_mqtt)
+            binding.tvConnectionStatus.setBackgroundColor(Color.GREEN)
+        }
+    }
+
+    override fun onConnectionLost(cause: Throwable) {
+        runOnUiThread {
+            binding.tvConnectionStatus.text = getString(R.string.connection_lost, cause.message ?: "Sin mensaje")
+            binding.tvConnectionStatus.setBackgroundColor(Color.RED)
+        }
+    }
+
+    override fun onDestroy() {
+        mqttManager.disconnect()
+        super.onDestroy()
+    }
+}
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white">
+
+    <!-- Encabezado -->
+    <LinearLayout
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/verde_bosque"
+        android:padding="12dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@mipmap/asbombeo"
+            android:contentDescription="@string/logo_empresa"
+            android:layout_marginEnd="12dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/nombre_empresa"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
+    <!-- Nuevo TextView para presión (visible solo para SVV) -->
+    <TextView
+        android:id="@+id/tvPresion"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/header"
+        android:visibility="gone"
+        android:textSize="20sp"
+        android:textColor="@color/black"
+        android:background="#20000000"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:padding="12dp"
+        android:text="@string/presion_placeholder"
+        android:contentDescription="@string/presion_desc"/>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/tvPresion"
+        android:layout_above="@id/tvConnectionStatus"
+        android:fillViewport="true">
+
+        <!-- Contenedor dinámico para los equipos -->
+        <LinearLayout
+            android:id="@+id/equipmentContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="4dp"
+            android:background="@android:color/white"/>
+
+    </ScrollView>
+
+    <!-- Estado de conexión MQTT (Fijo en la parte inferior) -->
+    <TextView
+        android:id="@+id/tvConnectionStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:background="#E0E0E0"
+        android:textColor="#000000"
+        android:gravity="center"
+        android:padding="8dp"
+        android:layout_alignParentBottom="true"
+        android:text="@string/conectando_a_mqtt"
+        android:contentDescription="@string/connection_status_desc"/>
+
+</RelativeLayout>

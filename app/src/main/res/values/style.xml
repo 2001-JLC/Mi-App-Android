@@ -1,0 +1,12 @@
+<resources>
+    <!-- Estilos para TextInputLayout -->
+    <style name="Widget.ASB.TextInputLayout.OutlinedBox" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="hintTextColor">?attr/colorPrimary</item>
+        <item name="boxStrokeColor">?attr/colorPrimary</item>
+        <item name="android:textColorHint">@color/gray_600</item>
+        <item name="android:textColor">@color/black</item>
+        <item name="errorTextColor">@color/error_color</item>
+    </style>
+
+
+</resources>

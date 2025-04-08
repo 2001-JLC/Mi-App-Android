@@ -1,0 +1,58 @@
+para pozo
+msg.payload = {
+    "equipos": [
+        {
+            "nombre": "Pozo 1",
+            "datos": {
+                "voltaje": parseFloat(valores.pozo1.voltaje),
+                "corriente": parseFloat(valores.pozo1.corriente),
+                "frecuencia": parseFloat(valores.pozo1.frecuencia)
+            },
+            "tipo": "02"
+        },
+        {
+            "nombre": "Pozo 2",
+            "datos": {
+                "voltaje": parseFloat(valores.pozo2.voltaje),
+                "corriente": parseFloat(valores.pozo2.corriente),
+                "frecuencia": parseFloat(valores.pozo2.corriente),
+                "presion": parseFloat(valores.pozo2.presion)
+            },
+            "tipo": "02"
+        },
+        {
+            "nombre": "Pozo 3",
+            "datos": {
+                "voltaje": parseFloat(valores.pozo2.voltaje),
+                "corriente": parseFloat(valores.pozo2.corriente),
+                "presion": parseFloat(valores.pozo2.presion)
+            },
+            "tipo": "02"
+        }
+    ]
+};
+
+001/0001/02/02/Datos
+----------------------------------------------------------------
+para hidro
+msg.payload = {
+    "equipos": [
+        {
+            "nombre": "Hidro 1",
+            "datos": {
+                "voltaje": parseFloat(valores.hidro1.voltaje),
+                "flujo": parseFloat(valores.hidro1.flujo)
+            },
+            "tipo": "03"
+        },
+        {
+            "nombre": "Hidro 2",
+            "datos": {
+                "voltaje": parseFloat(valores.hidro2.voltaje),
+                "flujo": parseFloat(valores.hidro2.flujo)
+            },
+            "tipo": "03"
+        }
+    ]
+};
+001/0002/03/02/Datos

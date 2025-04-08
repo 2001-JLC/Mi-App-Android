@@ -1,0 +1,274 @@
+Resumen del Proyecto (Avance Actual)
+1. Estructura Básica
+Paquetes organizados por funcionalidad:
+
+com.example.asb/
+├── configuration/ (Selección de equipos)
+├── login/        (Autenticación)
+├── monitoring/   (Pantallas vacías)
+├── faults/       (Pantallas vacías)
+├── data/         (Pantallas vacías)
+└── MainActivity  (Pantalla principal)
+
+2. Flujo Implementado
+Login → Selección de Equipos → Pantalla Principal → (Botones inferiores).
+
+Datos clave transmitidos:
+
+CLIENT_ID (ej: "001")
+
+WORK_ORDER (ej: "0001")
+
+EQUIPMENT_TYPE (ej: "01" para SVV)
+
+EQUIPMENT_COUNT (ej: 3)
+
+3. Pantallas Completadas
+
+_________________________________________________________________________________________________________
+Pantalla	      |  Función	           |           Características
+______________________|____________________________|_____________________________________________________
+Login	              |  Validar credenciales	   |   - Campos: Usuario, Contraseña, Orden de Trabajo
+                      |                            |   - SQLite para almacenamiento
+______________________|____________________________|_____________________________________________________
+EquipmentSelection    |  Configurar equipos	   |   - Spinner con tipos de equipos
+                      |                            |   - Selector de cantidad (1-N)
+                      |                            |   - Genera MQTT_TOPIC_BASE
+______________________|____________________________|_____________________________________________________
+MainActivity	      |  Dashboard principal	   |   - Encabezado personalizado (logo + nombre)
+                      |                            |   - 4 botones inferiores
+                      |                            |   - Área para datos dinámicos
+                      |                            |   - 4 botones inferiores
+                      |                            |   - Área para datos dinámicos
+______________________|____________________________|_____________________________________________________
+
+4. Próximos Pasos (MQTT)
+Objetivo: Recibir datos en tiempo real de los equipos mediante el protocolo MQTT
+----------------------------------------------
+Lo que quieres lograr:
+Sistema de Login Seguro
+    -Con usuarios, contraseñas y órdenes de trabajo
+    -Validación de credenciales en base de datos SQLite
+
+Configuración Dinámica de Equipos
+     -Selección de tipo de equipo (SVV, Pozo, Hidro, Carcamo)
+     -Cantidad de equipos (1-5)
+     -Generación de estructura de topics MQTT basada en esta configuración
+
+Comunicación MQTT
+     -Conexión a broker público (test.mosquitto.org)
+     -Suscripción a topics con estructura: [cliente]/[orden]/[tipo]/[cantidad]/Datos
+     -Recepción de datos en formato JSON con información de equipos
+
+Visualización de Datos
+    -Mostrar estado (encendido/apagado)
+    -Mostrar valores de voltaje, corriente y frecuencia
+    -Interfaz dinámica que se adapta al tipo y cantidad de equipos
+_________________________________________________________________________________________________
+com.tuempresa.monitoreo/
+├── auth/
+│   ├── LoginActivity.kt
+│   └── AuthHelper.kt
+├── configuration/
+│   ├── EquipmentSelectionActivity.kt
+│   └── EquipmentConfig.kt
+├── mqtt/
+│   ├── MQTTManager.kt
+│   ├── MQTTService.kt
+│   └── TopicGenerator.kt
+├── data/
+│   ├── models/
+│   │   ├── Equipment.kt
+│   │   ├── EquipmentType.kt
+│   │   └── WorkOrder.kt
+│   ├── db/
+│   │   ├── AppDatabase.kt
+│   │   ├── UserDao.kt
+│   │   └── WorkOrderDao.kt
+│   └── repository/
+│       ├── UserRepository.kt
+│       └── EquipmentRepository.kt
+├── ui/
+│   ├── main/
+│   │   ├── MainActivity.kt
+│   │   ├── EquipmentAdapter.kt
+│   │   └── viewholders/
+│   │       ├── SvvViewHolder.kt
+│   │       ├── PozoViewHolder.kt
+│   │       ├── HidroViewHolder.kt
+│   │       └── CarcamoViewHolder.kt
+│   └── dialogs/
+│       └── EquipmentDialog.kt
+└── utils/
+    ├── JsonParser.kt
+    └── Constants.kt
+
+_________________________________________________________________________________________
+ 1. Arquitectura General
+
+graph TD
+    A[Node-RED] -- MQTT --> B[Android]
+    B --> C[MonitoringActivity]
+    C --> D[MqttClientManager]
+    C --> E[JsonParser]
+    C --> F[DynamicEquipment]
+
+2. Componentes Principales
+a) MonitoringActivity.kt (Pantalla principal)
+Responsabilidades:
+
+Gestiona la conexión MQTT.
+
+Renderiza dinámicamente equipos y datos.
+
+Actualiza la UI en tiempo real con runOnUiThread.
+
+Flujo:
+
+Recibe JSON via MQTT.
+
+Parsea datos con JsonParser.
+
+Genera vistas con updateDynamicViews().
+
+b) MqttClientManager.kt (Conexión MQTT)
+Config:
+
+Broker: tcp://test.mosquitto.org:1883
+
+Callbacks para:
+
+onMessageReceived (nuevos datos).
+
+onConnectionLost (manejo de errores).
+
+Métodos clave:
+
+connect(), subscribe(), disconnect().
+
+c) JsonParser.kt (Conversión JSON → Objetos)
+Lógica:
+
+Usa Gson + TypeToken para parsear estructuras dinámicas.
+
+Espera JSON con formato:
+
+kotlin
+Copy
+{
+  "equipos": [
+    {
+      "nombre": String,
+      "datos": Map<String, Any> // Clave-Valor dinámico
+    }
+  ]
+}
+d) DynamicEquipment.kt (Modelo de datos)
+Estructura:
+
+kotlin
+Copy
+data class DynamicEquipment(
+    val nombre: String,           // Ej: "Bomba 1"
+    val datos: Map<String, Any>   // Ej: {"voltaje": 220.5, "corriente": 10.2}
+)
+🎨 3. UI y Layouts
+a) activity_monitoring.xml
+Estructura:
+
+ScrollView → Contenedor principal.
+
+LinearLayout (equipmentContainer): Aquí se añaden las tarjetas dinámicas.
+
+TextView (tvConnectionStatus): Estado de MQTT.
+
+b) item_pozo_dynamic.xml (Tarjeta por equipo)
+Diseño:
+
+Horizontal: Imagen (izq) + Datos (der).
+
+Partes:
+
+ImageView (icono bomba_pozo).
+
+TextView (nombre del equipo).
+
+LinearLayout (contenedor para datos dinámicos).
+
+⚡ 4. Dinamismo Implementado
+Para Equipos:
+Código:
+
+kotlin
+Copy
+binding.equipmentContainer.removeAllViews()
+equipos.forEach { equipo ->
+    val itemView = inflater.inflate(R.layout.item_pozo_dynamic, ...)
+    itemView.tvNombre.text = equipo.nombre // Nombre dinámico
+    // ...
+}
+Resultado:
+Crea tantas tarjetas como objetos tenga "equipos" en el JSON.
+
+Para Datos:
+Código:
+
+kotlin
+Copy
+equipo.datos.forEach { (key, value) ->
+    val textView = TextView(this).apply {
+        text = "$key: $value" // Texto dinámico
+    }
+    dataContainer.addView(textView)
+}
+Resultado:
+Muestra todos los pares clave-valor del mapa datos, sin límite predefinido.
+
+🔌 5. Integración con Node-RED
+Flow MQTT:
+
+Publica en el topic: 001/0001/02/2/Datos.
+
+Formato requerido:
+
+json
+Copy
+{
+  "equipos": [
+    {
+      "nombre": "Bomba 1",
+      "datos": {
+        "voltaje": 220.5,
+        "corriente": 10.2
+      }
+    }
+  ]
+}
+🛠 6. Personalización Pendiente
+Estilo:
+
+Modifica card_background.xml para sombras/bordes.
+
+Ajusta colores en item_pozo_dynamic.xml.
+
+Imágenes:
+
+Para múltiples tipos de equipos, usa when en Kotlin:
+
+val imageRes = when (equipo.nombre) {
+    "Bomba" -> R.mipmap.bomba_pozo
+    "Ventilador" -> R.mipmap.ventilador
+    else -> R.mipmap.default_image
+}
+
+itemView.ivEquipment.setImageResource(imageRes)
+⚠️ 7. Posibles Mejoras
+Validación de JSON:
+Añadir checks para campos obligatorios (nombre, datos).
+
+Performance:
+Usar RecyclerView en lugar de LinearLayout para muchos equipos.
+
+Seguridad:
+Validar topics MQTT y datos recibidos.
+

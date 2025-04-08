@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Encabezado -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/verde_bosque"
+            android:padding="12dp">
+
+            <!-- 1. Botón Menú (Fijo a la izquierda) -->
+            <ImageButton
+                android:id="@+id/btnMenu"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/menu"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/abrir_menu"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"/>
+
+            <!-- 2. Logo (Fijo a la derecha) -->
+            <ImageView
+                android:id="@+id/ivLogo"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@mipmap/asbombeo"
+                android:contentDescription="@string/logo_empresa"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"/>
+
+            <!-- 3. Nombre Empresa (Ajustable automáticamente en el centro) -->
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="@string/nombre_empresa"
+                android:textColor="@android:color/white"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:gravity="center"
+                app:layout_constraintStart_toEndOf="@id/btnMenu"
+                app:layout_constraintEnd_toStartOf="@id/ivLogo"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"/>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- Contenido Principal - Scrollable -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true"
+            android:padding="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Imagen del Equipo -->
+                <ImageView
+                    android:id="@+id/ivGeneralEquipment"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="@string/imagen_equipo"
+                    android:layout_marginBottom="16dp"/>
+
+                <!-- Descripción del Proyecto" -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="24dp">
+
+                    <TextView
+                        android:id="@+id/tvClientName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="16sp"
+                        android:layout_marginBottom="8dp"/>
+
+                    <TextView
+                        android:id="@+id/tvWorkOrder"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="16sp"
+                        android:layout_marginBottom="8dp"/>
+
+                    <TextView
+                        android:id="@+id/tvProjectType"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="16sp"/>
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Barra de Botones Inferior -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@color/verde_bosque"
+            android:padding="8dp">
+
+            <Button
+                android:id="@+id/btnMonitoring"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/monitoreo"
+                android:textColor="@android:color/white"
+                android:drawableTop="@drawable/monitoreo"
+                android:drawableTint="@android:color/white"/>
+
+            <Button
+                android:id="@+id/btnFaults"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/falla"
+                android:textColor="@android:color/white"
+                android:drawableTop="@drawable/warning"
+                android:drawableTint="@android:color/white"/>
+
+            <Button
+                android:id="@+id/btnData"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/datos"
+                android:textColor="@android:color/white"
+                android:drawableTop="@drawable/data"
+                android:drawableTint="@android:color/white"/>
+
+            <Button
+                android:id="@+id/btnBitacora"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/bitacora"
+                android:textColor="@android:color/white"
+                android:drawableTop="@drawable/bitacora"
+                android:drawableTint="@android:color/white"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Navigation View (menú lateral) - DEBE SER EL ÚLTIMO ELEMENTO -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="280dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="@android:color/white"
+        app:headerLayout="@layout/nav_header"
+        app:menu="@menu/navigation_menu"
+        app:itemTextColor="@color/black"
+        app:itemIconTint="@color/verde_bosque"/>
+</androidx.drawerlayout.widget.DrawerLayout>

@@ -1,0 +1,1241 @@
+___________________________________________________________________________________________________________________
+package com.example.asb
+
+import android.content.Intent
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import com.example.asb.configuration.ConfigActivity
+import com.example.asb.databinding.ActivityMainBinding
+import com.example.asb.db.DataActivity
+import com.example.asb.faults.FaultsActivity
+import com.example.asb.monitoring.MonitoringActivity
+
+class MainActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var mqttTopicBase: String
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        // 1. Recibir topic base
+        mqttTopicBase = intent.getStringExtra("MQTT_TOPIC_BASE") ?: "001/0001/02/02"
+
+        // 2. Configurar imagen según tipo
+        configurarImagenEquipo()
+
+        // 3. Configurar botones
+        setupButtons()
+    }
+
+    private fun configurarImagenEquipo() {
+        val tipo = mqttTopicBase.split('/')[2] // Obtener el tipo (02, 03, etc.)
+
+        binding.ivGeneralEquipment.setImageResource(
+            when(tipo) {
+                "01" -> R.mipmap.svv_general
+                "02" -> R.mipmap.pozo_general
+                "03" -> R.mipmap.hidro_general
+                "04" -> R.mipmap.carcamo_general
+                else -> R.mipmap.default_general
+            }
+        )
+    }
+
+    private fun setupButtons() {
+        binding.btnMonitoring.setOnClickListener {
+            val intent = Intent(this, MonitoringActivity::class.java).apply {
+                putExtra("MQTT_TOPIC_DATA", "$mqttTopicBase/Datos")
+                putExtra("EQUIPMENT_TYPE", mqttTopicBase.split('/')[2])
+            }
+            startActivity(intent)
+        }
+
+        binding.btnFaults.setOnClickListener {
+            startActivity(Intent(this, FaultsActivity::class.java))
+        }
+
+        binding.btnData.setOnClickListener {
+            startActivity(Intent(this, DataActivity::class.java))
+        }
+
+        binding.btnConfig.setOnClickListener {
+            startActivity(Intent(this, ConfigActivity::class.java))
+        }
+    }
+}
+___________________________________________________________________________________________________________________
+package com.example.asb.auth
+
+import android.content.Intent
+import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.example.asb.MainActivity
+import com.example.asb.databinding.ActivityLoginBinding
+import com.example.asb.db.DatabaseHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+class LoginActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityLoginBinding
+    private lateinit var dbHelper: DatabaseHelper
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityLoginBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        dbHelper = DatabaseHelper(applicationContext)
+
+        setupLoginButton()
+    }
+
+    private fun setupLoginButton() {
+        binding.btnLogin.setOnClickListener {
+            val username = binding.etUsername.text.toString().trim()
+            val password = binding.etPassword.text.toString().trim()
+            val workOrder = binding.etWorkOrder.text.toString().trim()
+
+            if (validateFields(username, password, workOrder)) {
+                attemptLogin(username, password, workOrder)
+            }
+        }
+    }
+
+    private fun validateFields(username: String, password: String, workOrder: String): Boolean {
+        if (username.isEmpty() || password.isEmpty() || workOrder.isEmpty()) {
+            Toast.makeText(this, "Complete todos los campos", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        return true
+    }
+
+    private fun attemptLogin(username: String, password: String, workOrder: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                if (dbHelper.validateUser(username, password)) {
+                    loginSuccess(username, workOrder)
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            this@LoginActivity,
+                            "Usuario/contraseña incorrectos",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@LoginActivity,
+                        "Error: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    Log.e("LOGIN_ERROR", "Error en login", e)
+                }
+            }
+        }
+    }
+
+    private suspend fun loginSuccess(username: String, workOrder: String) {
+        val userId = dbHelper.getUserId(username)
+        if (userId != -1L) {
+            dbHelper.registerWorkOrder(workOrder, userId)
+            withContext(Dispatchers.Main) {
+                startActivity(
+                    Intent(this@LoginActivity, MainActivity::class.java).apply {
+                        putExtra("MQTT_TOPIC_BASE", "001/${workOrder.padStart(4, '0')}/04/02") // 02 es tipo pozo por defecto
+                        putExtra("WORK_ORDER", workOrder.padStart(4, '0'))
+                        putExtra("USERNAME", username)
+                    }
+                )
+                finish()
+            }
+        } else {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@LoginActivity,
+                    "Error interno",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        dbHelper.close()
+        super.onDestroy()
+    }
+}
+___________________________________________________________________________________________________________________
+package com.example.asb.configuration
+
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import com.example.asb.R
+
+class ConfigActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_config)
+
+        // Configuración básica (por ahora vacía)
+    }
+}
+
+___________________________________________________________________________________________________________________
+package com.example.asb.db
+
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import com.example.asb.R
+
+class DataActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_data)
+
+        // Configuración básica (por ahora vacía)
+    }
+}
+___________________________________________________________________________________________________________________
+package com.example.asb.db
+
+import android.content.ContentValues
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
+import android.util.Log
+
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
+
+    companion object {
+        private const val DATABASE_NAME = "MonitoringDB"
+        private const val DATABASE_VERSION = 5
+
+        // Tabla Usuarios
+        const val TABLE_USERS = "users"
+        const val COL_USER_ID = "user_id"
+        const val COL_USERNAME = "username"
+        const val COL_PASSWORD = "password"
+        const val COL_FULL_NAME = "full_name"
+
+        // Tabla Órdenes de Trabajo
+        const val TABLE_WORK_ORDERS = "work_orders"
+        const val COL_ORDER_ID = "order_id"
+        const val COL_ORDER_NUMBER = "order_number"
+        const val COL_USER_ID_FK = "user_id_fk"
+        const val COL_CREATION_DATE = "creation_date"
+    }
+
+    override fun onCreate(db: SQLiteDatabase) {
+        try {
+            // 1. Crear tablas
+            db.execSQL("""
+                CREATE TABLE $TABLE_USERS (
+                    $COL_USER_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    $COL_USERNAME TEXT UNIQUE NOT NULL,
+                    $COL_PASSWORD TEXT NOT NULL,
+                    $COL_FULL_NAME TEXT NOT NULL
+                )
+            """.trimIndent())
+
+            db.execSQL("""
+                CREATE TABLE $TABLE_WORK_ORDERS (
+                    $COL_ORDER_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    $COL_ORDER_NUMBER TEXT NOT NULL,
+                    $COL_USER_ID_FK INTEGER NOT NULL,
+                    $COL_CREATION_DATE TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY ($COL_USER_ID_FK) REFERENCES $TABLE_USERS($COL_USER_ID)
+                )
+            """.trimIndent())
+
+            // 2. Insertar usuario con verificación robusta
+            if (insertDefaultUser(db) == -1L) {
+                Log.e("DB_ERROR", "Fallo al crear usuario por defecto!")
+            }
+        } catch (e: Exception) {
+            Log.e("DB_CREATION", "Error crítico al crear BD", e)
+        }
+    }
+
+    private fun insertDefaultUser(db: SQLiteDatabase): Long {
+        val values = ContentValues().apply {
+            put(COL_USERNAME, "Leyva")
+            put(COL_PASSWORD, "123")
+            put(COL_FULL_NAME, "Jesus Leyva")
+        }
+
+        return db.insert(TABLE_USERS, null, values).also { userId ->
+            if (userId != -1L) {
+                Log.d("DB_SUCCESS", "Usuario creado con ID: $userId")
+                verifyUserExists(db, "Leyva")
+            }
+        }
+    }
+
+    private fun verifyUserExists(db: SQLiteDatabase, username: String) {
+        db.rawQuery(
+            "SELECT 1 FROM $TABLE_USERS WHERE $COL_USERNAME = ?",
+            arrayOf(username)
+        ).use { cursor ->
+            Log.d("DB_VERIFY", "Usuario $username existe: ${cursor.count > 0}")
+        }
+    }
+
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        Log.w("DB_UPGRADE", "Forzando recreación de BD (v$oldVersion a v$newVersion)")
+        db.execSQL("DROP TABLE IF EXISTS $TABLE_WORK_ORDERS")
+        db.execSQL("DROP TABLE IF EXISTS $TABLE_USERS")
+        onCreate(db)
+    }
+
+    fun validateUser(username: String, password: String): Boolean {
+        readableDatabase.rawQuery(
+            """
+            SELECT 1 FROM $TABLE_USERS 
+            WHERE $COL_USERNAME = ? COLLATE NOCASE 
+            AND $COL_PASSWORD = ?
+            """.trimIndent(),
+            arrayOf(username.trim(), password.trim())
+        ).use { cursor ->
+            val exists = cursor.count > 0
+            if (!exists) {
+                Log.e("LOGIN_FAIL", "Usuario no encontrado: $username")
+                verifyTableExists()
+            }
+            return exists
+        }
+    }
+
+    private fun verifyTableExists() {
+        readableDatabase.rawQuery(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='$TABLE_USERS'",
+            null
+        ).use { cursor ->
+            Log.d("DB_CHECK", "Tabla existe: ${cursor.count > 0}")
+        }
+    }
+
+    fun registerWorkOrder(orderNumber: String, userId: Long): Long {
+        val values = ContentValues().apply {
+            put(COL_ORDER_NUMBER, orderNumber)
+            put(COL_USER_ID_FK, userId)
+        }
+        return writableDatabase.insert(TABLE_WORK_ORDERS, null, values)
+    }
+
+    fun getUserId(username: String): Long {
+        readableDatabase.rawQuery(
+            "SELECT $COL_USER_ID FROM $TABLE_USERS WHERE $COL_USERNAME = ?",
+            arrayOf(username)
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) cursor.getLong(0) else -1L
+        }
+    }
+}
+___________________________________________________________________________________________________________________
+package com.example.asb.faults
+
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import com.example.asb.R
+
+class FaultsActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_faults)
+
+        // Por ahora vacío, luego añadiremos lógica
+    }
+}
+___________________________________________________________________________________________________________________
+package com.example.asb.models
+
+import com.google.gson.annotations.SerializedName
+
+
+data class DynamicEquipment(
+    @SerializedName("nombre") val nombre: String,
+    @SerializedName("datos") val datos: Map<String, Any>,
+    @SerializedName("tipo") val tipo: String
+)
+___________________________________________________________________________________________________________________
+package com.example.asb.monitoring
+
+import android.os.Bundle
+import android.util.Log
+import android.view.LayoutInflater
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import com.example.asb.R
+import com.example.asb.databinding.ActivityMonitoringBinding
+import com.example.asb.mqtt.MqttCallbackHandler
+import com.example.asb.mqtt.MqttClientManager
+import android.graphics.Color
+import android.widget.ImageView
+import android.widget.LinearLayout
+import com.example.asb.models.DynamicEquipment
+import com.example.asb.utils.JsonParser
+
+class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
+    private lateinit var binding: ActivityMonitoringBinding
+    private lateinit var mqttManager: MqttClientManager
+    private lateinit var mqttTopic: String
+    private lateinit var equipmentType: String
+    private lateinit var jsonParser: JsonParser
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMonitoringBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        jsonParser = JsonParser()
+
+        // 1. Obtener parámetros
+        mqttTopic = intent.getStringExtra("MQTT_TOPIC_DATA") ?: "001/0001/02/02/Datos"
+        equipmentType = intent.getStringExtra("EQUIPMENT_TYPE") ?: "02"
+
+        // 2. Configurar MQTT
+        mqttManager = MqttClientManager("tcp://test.mosquitto.org:1883").apply {
+            setCallback(this@MonitoringActivity)
+            connect { success ->
+                if (success) subscribe(mqttTopic, 1)
+            }
+        }
+    }
+
+    override fun onMessageReceived(topic: String, message: String) {
+        runOnUiThread {
+            try {
+                // Usa JsonParser para parsear el mensaje
+                val equipos = jsonParser.parseDynamicData(message, equipmentType)
+
+                if (equipos != null) {
+                    binding.equipmentContainer.removeAllViews()
+                    equipos.forEach { equipo ->
+                        mostrarEquipo(equipo)
+                    }
+                } else {
+                    Log.e("MQTT", "Equipos es null después del parsing")
+                }
+            } catch (e: Exception) {
+                Log.e("MQTT", "Error al parsear JSON", e)
+            }
+        }
+    }
+
+    private fun mostrarEquipo(equipo: DynamicEquipment) {
+        val itemView = LayoutInflater.from(this)
+            .inflate(R.layout.item_pozo_dynamic, binding.equipmentContainer, false)
+
+        // Imagen según el tipo (usando equipo.tipo)
+        itemView.findViewById<ImageView>(R.id.ivEquipmentImage).setImageResource(
+            when(equipo.tipo) {
+                "01" -> R.mipmap.svv
+                "02" -> R.mipmap.bomba_pozo
+                "03" -> R.mipmap.hidro
+                "04" -> R.mipmap.carcamo_2b
+                else -> R.mipmap.asbombeo
+            }
+        )
+
+        // Nombre del equipo
+        itemView.findViewById<TextView>(R.id.tvNombre).text = equipo.nombre
+
+        // Mostrar datos dinámicos
+        val contenedor = itemView.findViewById<LinearLayout>(R.id.dynamicDataContainer)
+        contenedor.removeAllViews()
+
+        equipo.datos.forEach { (key, value) ->
+            TextView(this).apply {
+                text = getString(R.string.dynamic_data_format, key, value.toString())
+                setTextColor(Color.BLACK)
+                textSize = 16f
+            }.also { contenedor.addView(it) }
+        }
+
+        binding.equipmentContainer.addView(itemView)
+    }
+
+    override fun onConnectionSuccess() {
+        runOnUiThread {
+            binding.tvConnectionStatus.text = getString(R.string.connected_mqtt)
+            binding.tvConnectionStatus.setBackgroundColor(Color.GREEN)
+        }
+    }
+
+    override fun onConnectionLost(cause: Throwable) {
+        runOnUiThread {
+            binding.tvConnectionStatus.text = getString(R.string.connection_lost, cause.message ?: "Sin mensaje")
+            binding.tvConnectionStatus.setBackgroundColor(Color.RED)
+        }
+    }
+
+    override fun onDestroy() {
+        mqttManager.disconnect()
+        super.onDestroy()
+    }
+}
+___________________________________________________________________________________________________________________
+package com.example.asb.mqtt
+
+
+interface MqttCallbackHandler {
+    fun onMessageReceived(topic: String, message: String)
+    fun onConnectionLost(cause: Throwable)
+    fun onConnectionSuccess()
+}
+___________________________________________________________________________________________________________________
+package com.example.asb.mqtt
+
+import android.util.Log
+import org.eclipse.paho.client.mqttv3.*
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
+
+class MqttClientManager(
+    private val serverUri: String,
+    private val clientId: String = "AndroidClient_${System.currentTimeMillis()}"
+) {
+    private var mqttClient: MqttAsyncClient? = null
+    private var callback: MqttCallbackHandler? = null
+
+    fun connect(callback: (Boolean) -> Unit) {
+        try {
+            mqttClient = MqttAsyncClient(serverUri, clientId, MemoryPersistence()).apply {
+                setCallback(object : MqttCallback {
+                    override fun connectionLost(cause: Throwable) {
+                        Log.e("MQTT", "Connection lost", cause)
+                        this@MqttClientManager.callback?.onConnectionLost(cause)
+                    }
+
+                    override fun messageArrived(topic: String, message: MqttMessage) {
+                        Log.d("MQTT", "Message arrived on $topic: $message")
+                        this@MqttClientManager.callback?.onMessageReceived(topic, message.toString())
+                    }
+
+                    override fun deliveryComplete(token: IMqttDeliveryToken) {
+                        Log.d("MQTT", "Message delivered")
+                    }
+                })
+
+                val options = MqttConnectOptions().apply {
+                    isCleanSession = true
+                    isAutomaticReconnect = true
+                    connectionTimeout = 30
+                    keepAliveInterval = 60
+                }
+
+                connect(options, null, object : IMqttActionListener {
+                    override fun onSuccess(asyncActionToken: IMqttToken) {
+                        Log.d("MQTT", "Connection success")
+                        this@MqttClientManager.callback?.onConnectionSuccess()
+                        callback(true)
+                    }
+
+                    override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
+                        Log.e("MQTT", "Connection failed", exception)
+                        callback(false)
+                    }
+                })
+            }
+        } catch (e: Exception) {
+            Log.e("MQTT", "Error connecting", e)
+            callback(false)
+        }
+    }
+
+    fun subscribe(topic: String, qos: Int = 1) {
+        try {
+            mqttClient?.subscribe(topic, qos)?.actionCallback = object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken) {
+                    Log.d("MQTT", "Subscribed to $topic")
+                }
+
+                override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
+                    Log.e("MQTT", "Subscribe failed", exception)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MQTT", "Subscribe error", e)
+        }
+    }
+
+    fun setCallback(handler: MqttCallbackHandler) {
+        this.callback = handler
+    }
+
+    fun disconnect() {
+        try {
+            mqttClient?.disconnect()?.waitForCompletion() // Espera a que se complete la desconexión
+        } catch (e: Exception) {
+            Log.e("MQTT", "Disconnect error", e)
+        }
+    }
+}
+___________________________________________________________________________________________________________________
+package com.example.asb.utils
+
+import android.util.Log
+import com.example.asb.models.DynamicEquipment
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+
+
+class JsonParser {
+    private val gson = Gson()
+
+    fun parseDynamicData(jsonString: String, equipmentType: String): List<DynamicEquipment>? {
+        return try {
+            val type = object : TypeToken<Map<String, List<DynamicEquipment>>>() {}.type
+            val data = gson.fromJson<Map<String, List<DynamicEquipment>>>(jsonString, type)
+
+            data?.get("equipos")?.map { equipo ->
+                equipo.copy(tipo = equipmentType)
+            }?.also {
+                Log.d("JSON_PARSE", "Parsed ${it.size} equipos")
+            }
+        } catch (e: Exception) {
+            Log.e("JSON_PARSE", """
+                Error parsing JSON: ${e.message}
+                JSON Input: $jsonString
+                Expected format: {
+                    "equipos": [
+                        {
+                            "nombre": "...",
+                            "datos": { ... }
+                        }
+                    ]
+                }
+            """.trimIndent())
+            null
+        }
+    }
+}
+___________________________________________________________________________________________________________________
+activity_main
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".MainActivity">
+
+    <!-- Encabezado -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/verde_esmeralda"
+        android:padding="12dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@mipmap/asbombeo"
+            android:contentDescription="@string/logo_empresa"
+            android:layout_marginEnd="12dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/nombre_empresa"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
+    <!-- Contenido Principal - Scrollable -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Imagen del Equipo -->
+            <ImageView
+                android:id="@+id/ivGeneralEquipment"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:scaleType="centerCrop"
+                android:contentDescription="@string/imagen_equipo"
+                android:layout_marginBottom="16dp"/>
+
+            <!-- Descripción del Proyecto -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="24dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/obra"
+                    android:textSize="16sp"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/nombre_equipo"
+                    android:textSize="16sp"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/cliente"
+                    android:textSize="16sp"/>
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Barra de Botones Inferior -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@color/verde_esmeralda"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/btnMonitoring"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/monitoreo"
+            android:textColor="@android:color/white"
+            android:drawableTop="@drawable/monitoreo"
+            android:drawableTint="@android:color/white"/>
+
+        <Button
+            android:id="@+id/btnFaults"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/falla"
+            android:textColor="@android:color/white"
+            android:drawableTop="@drawable/warning"
+            android:drawableTint="@android:color/white"/>
+
+        <Button
+            android:id="@+id/btnData"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/datos"
+            android:textColor="@android:color/white"
+            android:drawableTop="@drawable/data"
+            android:drawableTint="@android:color/white"/>
+
+        <Button
+            android:id="@+id/btnConfig"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/conf"
+            android:textColor="@android:color/white"
+            android:drawableTop="@drawable/settings"
+            android:drawableTint="@android:color/white"/>
+    </LinearLayout>
+</LinearLayout>
+___________________________________________________________________________________________________________________
+Login
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:padding="8dp"
+    tools:context=".auth.LoginActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="16dp">
+
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_marginBottom="24dp"
+            android:contentDescription="@string/logo_de_la_aplicaci_n"
+            android:src="@mipmap/ic_launcher"
+            app:tint="?attr/colorPrimary"
+            tools:ignore="ImageContrastCheck" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sistema_de_monitoreo"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorPrimary"
+            android:layout_marginBottom="32dp"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilUsername"
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:hint="@string/usuario"
+            app:startIconDrawable="@android:drawable/ic_menu_myplaces"
+            app:helperText="@string/ingrese_su_usuario"
+            app:helperTextTextColor="?attr/colorPrimary"
+            app:hintTextColor="?attr/colorPrimary"
+            app:boxStrokeColor="?attr/colorPrimary">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etUsername"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:importantForAccessibility="yes"
+                android:contentDescription="@string/campo_usuario"
+                android:textColor="@color/white"
+                android:textColorHint="@color/gray_600"
+                android:focusable="true"
+                android:focusableInTouchMode="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilPassword"
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:hint="@string/contrase_a"
+            app:startIconDrawable="@android:drawable/ic_lock_lock"
+            app:helperText="@string/ingrese_su_contrase_a"
+            app:helperTextTextColor="?attr/colorPrimary"
+            app:hintTextColor="?attr/colorPrimary"
+            app:boxStrokeColor="?attr/colorPrimary">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:importantForAccessibility="yes"
+                android:contentDescription="@string/campo_contrase_a"
+                android:textColor="@color/white"
+                android:textColorHint="@color/gray_600"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilWorkOrder"
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:hint="@string/orden_de_trabajo"
+            app:startIconDrawable="@android:drawable/ic_menu_agenda"
+            app:helperText="@string/ingrese_numero_orden"
+            app:helperTextTextColor="?attr/colorPrimary"
+            app:hintTextColor="?attr/colorPrimary"
+            app:boxStrokeColor="?attr/colorPrimary">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etWorkOrder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:importantForAccessibility="yes"
+                android:contentDescription="@string/campo_orden_trabajo"
+                android:textColor="@color/white"
+                android:textColorHint="@color/gray_600"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLogin"
+            android:layout_width="300dp"
+            android:layout_height="56dp"
+            android:text="@string/iniciar_sesi_n"
+            android:textAllCaps="false"
+            android:textColor="@android:color/white"
+            app:backgroundTint="@color/purple_500"
+            style="@style/Widget.MaterialComponents.Button"
+            android:focusable="true"
+            android:clickable="true"/>
+    </LinearLayout>
+</ScrollView>
+___________________________________________________________________________________________________________________
+monotoring
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:layout_above="@+id/tvConnectionStatus"
+        android:contentDescription="@string/app_name">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <!-- Contenedor dinámico para los equipos -->
+            <LinearLayout
+                android:id="@+id/equipmentContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="4dp"
+                android:background="@android:color/white"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Estado de conexión MQTT (Fijo en la parte inferior) -->
+    <TextView
+        android:id="@+id/tvConnectionStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:background="#E0E0E0"
+        android:textColor="#000000"
+        android:gravity="center"
+        android:padding="8dp"
+        android:layout_alignParentBottom="true"
+        android:text="@string/conectando_a_mqtt"
+        android:contentDescription="@string/connection_status_desc"/>
+
+</RelativeLayout>
+___________________________________________________________________________________________________________________
+config, data y faults, no tienen nada aun, tienen esto las tres:
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+___________________________________________________________________________________________________________________
+manifest
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ASB"
+        android:largeHeap="true"
+        android:hardwareAccelerated="true"
+        tools:targetApi="31">
+
+        <activity
+            android:name=".auth.LoginActivity"
+            android:exported="true"
+            android:theme="@style/Theme.ASB">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.ASB" />
+
+        <activity
+            android:name=".monitoring.MonitoringActivity"
+            android:exported="false" />
+
+    </application>
+
+</manifest>
+___________________________________________________________________________________________________________________
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+}
+
+android {
+    namespace = "com.example.asb"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.example.asb"
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+    buildFeatures {
+        viewBinding = true
+        compose = true
+    }
+}
+
+dependencies {
+    implementation(libs.mqtt.client)
+    //implementation(libs.mqtt.android.service)
+    implementation(libs.androidx.localbroadcastmanager)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.gson)
+    implementation(libs.material)
+    implementation(libs.androidx.legacy.support.v4)
+    implementation(libs.androidx.ui.test.android)
+    implementation(libs.androidx.espresso.contrib)
+    implementation(libs.espresso.core)
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
+}
+___________________________________________________________________________________________________________________
+colors
+<resources>
+    <!-- Paleta de colores -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+
+    <!-- Colores neutros -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="gray_600">#FF757575</color>
+
+    <!-- Colores funcionales -->
+    <color name="error_color">#FFD32F2F</color>
+    <color name="verde_esmeralda">#50C878</color>
+</resources>
+___________________________________________________________________________________________________________________
+strings
+<resources>
+    <!-- Common -->
+    <string name="app_name">ASB</string>
+    <string name="unknown">Desconocido</string>
+
+    <!-- Login -->
+    <string name="logo_de_la_aplicaci_n">Logo de la aplicación</string>
+    <string name="sistema_de_monitoreo">Sistema de Monitoreo</string>
+    <string name="usuario">Usuario</string>
+    <string name="campo_usuario">Campo para ingresar nombre de usuario</string>
+    <string name="ingrese_su_usuario">Ingrese su nombre de usuario</string>
+    <string name="contrase_a">Contraseña</string>
+    <string name="campo_contrase_a">Campo para ingresar contraseña</string>
+    <string name="ingrese_su_contrase_a">Ingrese su contraseña</string>
+    <string name="orden_de_trabajo">Orden de Trabajo</string>
+    <string name="campo_orden_trabajo">Campo para ingresar número de orden de trabajo</string>
+    <string name="ingrese_numero_orden">Ingrese el número de orden</string>
+    <string name="iniciar_sesi_n">Iniciar Sesión</string>
+    <string name="invalid_credentials">Credenciales incorrectas</string>
+    <string name="empty_work_order">Ingrese la orden de trabajo</string>
+
+    <!-- Equipment Types -->
+    <string name="equipment_svv">SVV (Sistema de velocidad variable)</string>
+    <string name="equipment_well">Pozo</string>
+    <string name="equipment_hydro">Hidro</string>
+    <string name="equipment_cistern">Carcamo</string>
+
+    <!-- Main Activity -->
+    <string name="main_title">Pantalla Principal - %1$s</string>
+    <string name="equipment_info">Configuración: %1$d equipo(s) de tipo %2$s</string>
+    <string name="configurar_mqtt">Configurar MQTT</string>
+    <string name="ver_equipos">Ver Equipos</string>
+    <string name="topic_info">Configuración MQTT:\nCliente: %1$s\nOrden: %2$s\nTipo: %3$s\nVersión: %4$d</string>
+    <string name="equipment_type_pozo">Pozo</string>
+    <string name="equipment_type_hidro">Hidro</string>
+    <string name="equipment_type_svv">SVV</string>
+    <string name="equipment_type_carcamo">Cárcamo</string>
+
+    <!-- Icons Description -->
+    <string name="icon_person">Icono de usuario</string>
+    <string name="icon_lock">Icono de candado</string>
+    <string name="icon_work">Icono de orden de trabajo</string>
+    <string name="icon_dropdown">Icono de menú desplegable</string>
+    <string name="equipment_config_title">confg_title\n</string>
+    <string name="equipment_type_hint">type_hint</string>
+    <string name="equipment_count_label">count_label</string>
+    <string name="continue_button">buttoncontinue</string>
+    <string name="error_username_required">username</string>
+    <string name="error_password_required">paswor</string>
+    <string name="error_workorder_required">workorder</string>
+    <string name="error_database">arror databsse</string>
+    <string name="error_user_not_found">Errror user not found</string>
+    <string name="error_invalid_credentials">credencial invalido</string>
+    <string name="incrementar_cantidad">Incrementar</string>
+    <string name="decrementar_cantidad">Decrementar</string>
+    <!-- Main Activity  -->
+    <string name="logo_empresa">Logo de Automatización y Sistemas de Bombeo</string>
+    <string name="nombre_empresa">Automatización y Sistemas de Bombeo</string>
+    <string name="imagen_equipo">Imagen del equipo instalado</string>
+    <string name="obra">Obra:</string>
+    <string name="nombre_equipo">Nombre del Equipo:</string>
+    <string name="cliente">Cliente:</string>
+    <string name="monitoreo">Monitoreo</string>
+    <string name="falla">Falla</string>
+    <string name="datos">Datos</string>
+    <string name="conf">Conf</string>
+
+
+    <!-- MonitoringActivity  -->
+    <string name="message_received">Mensaje recibido:\n%s</string>
+    <string name="connection_success">\nConexión establecida correctamente</string>
+    <string name="voltage_text">Voltaje: %1$.2f V</string>
+    <string name="current_text">Corriente: %1$.2f A</string>
+    <string name="frequency_text">Frecuencia: %1$.2f Hz</string>
+    <string name="connected_mqtt">Conectado al broker MQTT</string>
+    <string name="mqtt_error">Error de conexión MQTT</string>
+    <string name="json_error">Error procesando datos</string>
+    <string name="connection_lost">Desconectado: %1$s</string>
+    <string name="no_equipment_data">No se recibieron datos de equipos</string>
+    <string name="dynamic_data_format">%1$s: %2$s</string>
+
+    <!-- item pozo,xml  -->
+    <string name="conectando_a_mqtt">conectando a mqtt</string>
+    <string name="connection_status_desc">Estado de conexión MQTT</string>
+    <string name="equipment_image_desc">Imagen Por Equipo</string>
+    <string name="specific_equipment_image_desc">Imagen específica del equipo</string>
+
+</resources>
+___________________________________________________________________________________________________________________
+style
+<resources>
+    <!-- Estilos para TextInputLayout -->
+    <style name="Widget.ASB.TextInputLayout.OutlinedBox" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="hintTextColor">?attr/colorPrimary</item>
+        <item name="boxStrokeColor">?attr/colorPrimary</item>
+        <item name="android:textColorHint">@color/gray_600</item>
+        <item name="android:textColor">@color/black</item>
+        <item name="errorTextColor">@color/error_color</item>
+    </style>
+
+    <!-- Estilo para botones -->
+    <style name="Widget.ASB.Button" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">?attr/colorPrimary</item>
+        <item name="android:textColor">@color/white</item>
+    </style>
+</resources>
+___________________________________________________________________________________________________________________
+themes
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Tema base (modo claro) -->
+    <style name="Theme.ASB" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+    </style>
+</resources>
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________

@@ -1,0 +1,86 @@
+package com.example.asb.mqtt
+
+import android.util.Log
+import org.eclipse.paho.client.mqttv3.*
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
+
+class MqttClientManager(
+    private val serverUri: String,
+    private val clientId: String = "AndroidClient_${System.currentTimeMillis()}"
+) {
+    private var mqttClient: MqttAsyncClient? = null
+    private var callback: MqttCallbackHandler? = null
+
+    fun connect(callback: (Boolean) -> Unit) {
+        try {
+            mqttClient = MqttAsyncClient(serverUri, clientId, MemoryPersistence()).apply {
+                setCallback(object : MqttCallback {
+                    override fun connectionLost(cause: Throwable) {
+                        Log.e("MQTT", "Connection lost", cause)
+                        this@MqttClientManager.callback?.onConnectionLost(cause)
+                    }
+
+                    override fun messageArrived(topic: String, message: MqttMessage) {
+                        Log.d("MQTT", "Message arrived on $topic: $message")
+                        this@MqttClientManager.callback?.onMessageReceived(topic, message.toString())
+                    }
+
+                    override fun deliveryComplete(token: IMqttDeliveryToken) {
+                        Log.d("MQTT", "Message delivered")
+                    }
+                })
+
+                val options = MqttConnectOptions().apply {
+                    isCleanSession = true
+                    isAutomaticReconnect = true
+                    connectionTimeout = 30
+                    keepAliveInterval = 60
+                }
+
+                connect(options, null, object : IMqttActionListener {
+                    override fun onSuccess(asyncActionToken: IMqttToken) {
+                        Log.d("MQTT", "Connection success")
+                        this@MqttClientManager.callback?.onConnectionSuccess()
+                        callback(true)
+                    }
+
+                    override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
+                        Log.e("MQTT", "Connection failed", exception)
+                        callback(false)
+                    }
+                })
+            }
+        } catch (e: Exception) {
+            Log.e("MQTT", "Error connecting", e)
+            callback(false)
+        }
+    }
+
+    fun subscribe(topic: String, qos: Int = 1) {
+        try {
+            mqttClient?.subscribe(topic, qos)?.actionCallback = object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken) {
+                    Log.d("MQTT", "Subscribed to $topic")
+                }
+
+                override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
+                    Log.e("MQTT", "Subscribe failed", exception)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MQTT", "Subscribe error", e)
+        }
+    }
+
+    fun setCallback(handler: MqttCallbackHandler) {
+        this.callback = handler
+    }
+
+    fun disconnect() {
+        try {
+            mqttClient?.disconnect()?.waitForCompletion() // Espera a que se complete la desconexión
+        } catch (e: Exception) {
+            Log.e("MQTT", "Disconnect error", e)
+        }
+    }
+}
