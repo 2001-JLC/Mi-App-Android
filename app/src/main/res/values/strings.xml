@@ -1,0 +1,110 @@
+<resources>
+    <!-- Common -->
+    <string name="app_name">ASB</string>
+    <string name="unknown">Desconocido</string>
+
+    <!-- Login -->
+    <string name="logo_de_la_aplicaci_n">Vienbenido</string>
+    <string name="sistema_de_monitoreo">Sistema de Monitoreo</string>
+    <string name="usuario">Usuario</string>
+    <string name="campo_usuario">Campo para ingresar nombre de usuario</string>
+    <string name="ingrese_su_usuario">Ingrese su nombre de usuario</string>
+    <string name="contrase_a">Contraseña</string>
+    <string name="campo_contrase_a">Campo para ingresar contraseña</string>
+    <string name="ingrese_su_contrase_a">Ingrese su contraseña</string>
+    <string name="orden_de_trabajo">Orden de Trabajo</string>
+    <string name="campo_orden_trabajo">Campo para ingresar número de orden de trabajo</string>
+    <string name="ingrese_numero_orden">Ingrese el número de orden</string>
+    <string name="iniciar_sesi_n">Iniciar Sesión</string>
+    <string name="invalid_credentials">Credenciales incorrectas</string>
+    <string name="empty_work_order">Ingrese la orden de trabajo</string>
+
+    <!-- Equipment Types -->
+    <string name="equipment_svv">SVV (Sistema de velocidad variable)</string>
+    <string name="equipment_well">Pozo</string>
+    <string name="equipment_hydro">Hidro</string>
+    <string name="equipment_cistern">Carcamo</string>
+
+    <!-- Main Activity -->
+    <string name="main_title">Pantalla Principal - %1$s</string>
+    <string name="equipment_info">Configuración: %1$d equipo(s) de tipo %2$s</string>
+    <string name="configurar_mqtt">Configurar MQTT</string>
+    <string name="ver_equipos">Ver Equipos</string>
+    <string name="topic_info">Configuración MQTT:\nCliente: %1$s\nOrden: %2$s\nTipo: %3$s\nVersión: %4$d</string>
+    <string name="equipment_type_pozo">Pozo</string>
+    <string name="equipment_type_hidro">Hidro</string>
+    <string name="equipment_type_svv">SVV</string>
+    <string name="equipment_type_carcamo">Cárcamo</string>
+    <string name="client_label">Cliente: %s</string>
+    <string name="order_label">Orden: %s</string>
+    <string name="project_label">Proyecto: %s</string>
+
+
+    <!-- Icons Description -->
+    <string name="icon_person">Icono de usuario</string>
+    <string name="icon_lock">Icono de candado</string>
+    <string name="icon_work">Icono de orden de trabajo</string>
+    <string name="icon_dropdown">Icono de menú desplegable</string>
+    <string name="equipment_config_title">confg_title\n</string>
+    <string name="equipment_type_hint">type_hint</string>
+    <string name="equipment_count_label">count_label</string>
+    <string name="continue_button">buttoncontinue</string>
+    <string name="error_username_required">username</string>
+    <string name="error_password_required">paswor</string>
+    <string name="error_workorder_required">workorder</string>
+    <string name="error_database">arror databsse</string>
+    <string name="error_user_not_found">Errror user not found</string>
+    <string name="error_invalid_credentials">credencial invalido</string>
+    <string name="incrementar_cantidad">Incrementar</string>
+    <string name="decrementar_cantidad">Decrementar</string>
+
+    <!-- Activity Main.xml -->
+    <string name="logo_empresa">Logo de Automatización y Sistemas de Bombeo</string>
+    <string name="nombre_empresa">Automatización y Sistemas de Bombeo</string>
+    <string name="imagen_equipo">Imagen del equipo instalado</string>
+    <string name="obra">Obra:</string>
+    <string name="nombre_equipo">Nombre del Equipo:</string>
+    <string name="cliente">Cliente:</string>
+    <string name="monitoreo">Monitoreo</string>
+    <string name="falla">Falla</string>
+    <string name="datos">Datos</string>
+    <string name="conf">Conf</string>
+    <string name="bitacora">Bitácora</string>
+    <string name="abrir_menu">Abrir menú</string>
+
+
+    <!-- MonitoringActivity  -->
+    <string name="message_received">Mensaje recibido:\n%s</string>
+    <string name="connection_success">\nConexión establecida correctamente</string>
+    <string name="voltage_text">Voltaje: %1$.2f V</string>
+    <string name="current_text">Corriente: %1$.2f A</string>
+    <string name="frequency_text">Frecuencia: %1$.2f Hz</string>
+    <string name="connected_mqtt">Conectado al broker MQTT</string>
+    <string name="mqtt_error">Error de conexión MQTT</string>
+    <string name="json_error">Error procesando datos</string>
+    <string name="connection_lost">Desconectado: %1$s</string>
+    <string name="no_equipment_data">No se recibieron datos de equipos</string>
+    <string name="dynamic_data_format">%1$s: %2$s</string>
+    <string name="presion_placeholder">Presión: — kg/cm²</string>
+    <string name="presion_desc">Presión del sistema SVV</string>
+    <string name="pressure_value"><b>Presión:</b> %1$.2f kg/cm²</string>
+    <!-- %1$.2f = 1er argumento, formato decimal con 2 decimales -->
+
+    <!-- item pozo,xml  -->
+    <string name="conectando_a_mqtt">conectando a mqtt</string>
+    <string name="connection_status_desc">Estado de conexión MQTT</string>
+    <string name="equipment_image_desc">Imagen Por Equipo</string>
+    <string name="specific_equipment_image_desc">Imagen específica del equipo</string>
+
+    <!-- navigation menu.xml  -->
+    <string name="acerca_de">Acerca de</string>
+    <string name="cerrar_sesion">Cerrar sesión</string>
+    <string name="back_button_desc">Botón para regresar</string>
+    <string name="about_title">Acerca de</string>
+    <string name="website_text">www.asbombeo.com</string>
+    <string name="website_desc">Sitio web de la empresa</string>
+    <string name="phone_text">+52 734 108 9680</string>
+    <string name="phone_desc">Número de teléfono</string>
+    <string name="email_text">contacto@asbombeo.com</string>
+    <string name="email_desc">Correo electrónico</string>
+</resources>
