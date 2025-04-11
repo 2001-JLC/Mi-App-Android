@@ -3,76 +3,117 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:background="@drawable/bg_gradient_dark"
+    android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="vertical">
 
-        <!-- Encabezado con flecha -->
-        <LinearLayout
+        <!-- Encabezado con botón de retroceso -->
+        <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="24dp">
+            android:layout_height="?actionBarSize"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
 
             <ImageButton
                 android:id="@+id/btnBack"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/arrow_back"
+                android:layout_centerVertical="true"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                app:tint="@android:color/white" />
+                android:contentDescription="@string/back_button"
+                android:src="@drawable/arrow_back"
+                app:tint="@android:color/white"
+                tools:ignore="ContentDescription"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Acerca de"
+                android:layout_centerInParent="true"
+                android:text="@string/acerca_de"
                 android:textColor="@android:color/white"
                 android:textSize="20sp"
                 android:textStyle="bold" />
-        </LinearLayout>
+        </RelativeLayout>
 
-        <!-- Versión -->
-        <TextView
-            android:id="@+id/tvVersion"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="@android:color/white"
-            android:gravity="center"
-            android:layout_marginBottom="32dp" />
-
-        <!-- Lista de íconos -->
+        <!-- Contenido principal sobre el gradiente -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:divider="@drawable/divider_gray"
-            android:showDividers="middle">
+            android:padding="16dp">
 
-            <!-- Web -->
+            <!-- Logo y versión -->
             <LinearLayout
-                android:id="@+id/btnWeb"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingVertical="24dp">
+
+                <ImageView
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:contentDescription="@string/app_logo"
+                    android:src="@mipmap/ic_launcher_round" />
+
+                <TextView
+                    android:id="@+id/tvVersion"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/version_label"
+                    android:textColor="#E6FFFFFF"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/about_company_description"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+            <!-- Sección de contacto - Diseño integrado -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:text="@string/contacto"
+                android:textColor="@android:color/white"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <!-- Email -->
+            <LinearLayout
+                android:id="@+id/btnEmail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:background="?attr/selectableItemBackground"
                 android:orientation="horizontal"
-                android:padding="16dp">
+                android:padding="12dp">
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@drawable/web"
-                    android:tint="#FF4CAF50" />
+                    android:layout_marginEnd="16dp"
+                    android:contentDescription="@string/email_icon"
+                    android:src="@drawable/mail"
+                    app:tint="@android:color/white"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="www.asbombeo.com"
-                    android:textColor="#FF4CAF50"
-                    android:layout_marginStart="16dp" />
+                    android:text="@string/company_email"
+                    android:textColor="@android:color/white"
+                    android:textSize="16sp" />
             </LinearLayout>
 
             <!-- Teléfono -->
@@ -80,44 +121,52 @@
                 android:id="@+id/btnPhone"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:background="?attr/selectableItemBackground"
                 android:orientation="horizontal"
-                android:padding="16dp">
+                android:padding="12dp">
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
+                    android:layout_marginEnd="16dp"
+                    android:contentDescription="@string/phone_icon"
                     android:src="@drawable/call"
-                    app:tint="#FF4CAF50" />
+                    app:tint="@android:color/white"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="+52 734 108 9680"
-                    android:textColor="#FF4CAF50"
-                    android:layout_marginStart="16dp"/>
+                    android:text="@string/company_phone"
+                    android:textColor="@android:color/white"
+                    android:textSize="16sp" />
             </LinearLayout>
 
-            <!-- Email -->
+            <!-- Web -->
             <LinearLayout
-                android:id="@+id/btnEmail"
+                android:id="@+id/btnWeb"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
                 android:orientation="horizontal"
-                android:padding="16dp">
+                android:padding="12dp">
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@drawable/mail"
-                    app:tint="#FF4CAF50" />
+                    android:layout_marginEnd="16dp"
+                    android:contentDescription="@string/web_icon"
+                    android:src="@drawable/web"
+                    app:tint="@android:color/white"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="contacto@asbombeo.com"
-                    android:textColor="#FF4CAF50"
-                    android:layout_marginStart="16dp"/>
+                    android:text="@string/company_website"
+                    android:textColor="@android:color/white"
+                    android:textSize="16sp" />
             </LinearLayout>
+
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

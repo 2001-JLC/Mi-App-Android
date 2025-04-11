@@ -107,4 +107,25 @@
     <string name="phone_desc">Número de teléfono</string>
     <string name="email_text">contacto@asbombeo.com</string>
     <string name="email_desc">Correo electrónico</string>
+    <string name="version_1_0_0">Versión 1.0.0</string>
+    
+
+    <!-- about .xml  -->
+    <string name="back_button">Botón de retroceso</string>
+    <string name="app_logo">Logo de la aplicación</string>
+    <string name="version_label">Versión %s</string>
+    <string name="contacto">Contacto</string>
+    <string name="email_icon">Icono de email</string>
+    <string name="correo_electronico">Correo electrónico</string>
+    <string name="company_email">contacto@asbombeo.com</string>
+    <string name="phone_icon">Icono de teléfono</string>
+    <string name="telefono">Teléfono</string>
+    <string name="company_phone">+52 734 108 9680</string>
+    <string name="web_icon">Icono de web</string>
+    <string name="sitio_web">Sitio web</string>
+    <string name="company_website">www.asbombeo.com</string>
+    <string name="about_company_description">
+        ASBombeo es una empresa especializada en sistemas de bombeo
+        y control de agua, ofreciendo soluciones innovadoras y tecnología
+        de punta para el manejo eficiente de recursos hídricos.</string>
 </resources>
