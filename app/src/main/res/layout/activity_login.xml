@@ -82,30 +82,6 @@
                 android:textColorHint="@color/gray_600"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/tilWorkOrder"
-            android:layout_width="300dp"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:hint="@string/orden_de_trabajo"
-            app:startIconDrawable="@drawable/work_order"
-            app:helperText="@string/ingrese_numero_orden"
-            app:helperTextTextColor="@color/verde_caza"
-            app:hintTextColor="@color/white"
-            app:boxStrokeColor="@color/white">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etWorkOrder"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number"
-                android:importantForAccessibility="yes"
-                android:contentDescription="@string/campo_orden_trabajo"
-                android:textColor="@color/white"
-                android:textColorHint="@color/gray_600"/>
-        </com.google.android.material.textfield.TextInputLayout>
-
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnLogin"
             android:layout_width="300dp"
@@ -117,5 +93,13 @@
             style="@style/Widget.MaterialComponents.Button"
             android:focusable="true"
             android:clickable="true"/>
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            android:indeterminateTint="@color/verde_bosque" />
+
     </LinearLayout>
 </ScrollView>

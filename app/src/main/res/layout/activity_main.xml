@@ -6,34 +6,39 @@
     android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
     tools:context=".MainActivity">
 
-    <!-- CONTENIDO PRINCIPAL -->
-    <LinearLayout
+    <!-- CONTENIDO PRINCIPAL (primer hijo del DrawerLayout) -->
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="match_parent">
 
         <!-- Encabezado -->
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
+            android:id="@+id/header"
+            android:layout_width="0dp"
             android:layout_height="?attr/actionBarSize"
             android:background="@color/verde_bosque"
-            android:padding="12dp">
+            android:padding="12dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
-            <!-- 1. Botón Menú (Fijo a la izquierda) -->
+            <!-- Botón Menú -->
             <ImageButton
                 android:id="@+id/btnMenu"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/menu"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/abrir_menu"
+                android:src="@drawable/menu"
+                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"/>
+                tools:ignore="TouchTargetSizeCheck" />
 
-            <!-- 2. Logo (Fijo a la derecha) -->
+            <!-- Logo -->
             <ImageView
                 android:id="@+id/ivLogo"
                 android:layout_width="48dp"
@@ -44,7 +49,7 @@
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"/>
 
-            <!-- 3. Nombre Empresa (Ajustable automáticamente en el centro) -->
+            <!-- Nombre Empresa -->
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -59,38 +64,46 @@
                 app:layout_constraintEnd_toStartOf="@id/ivLogo"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"/>
-
         </androidx.constraintlayout.widget.ConstraintLayout>
 
         <!-- Contenido Principal - Scrollable -->
-        <ScrollView
-            android:layout_width="match_parent"
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/scrollView"
+            android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_weight="1"
             android:fillViewport="true"
-            android:padding="0dp">
+            app:layout_constraintBottom_toTopOf="@+id/bottomButtons"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/header">
 
-            <LinearLayout
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
                 android:padding="16dp">
 
                 <!-- Imagen del Equipo -->
                 <ImageView
                     android:id="@+id/ivGeneralEquipment"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="200dp"
                     android:scaleType="centerCrop"
                     android:contentDescription="@string/imagen_equipo"
-                    android:layout_marginBottom="16dp"/>
+                    android:layout_marginBottom="16dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"/>
 
-                <!-- Descripción del Proyecto" -->
+                <!-- Descripción del Proyecto -->
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:id="@+id/projectInfo"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:layout_marginBottom="24dp">
+                    android:layout_marginBottom="24dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/ivGeneralEquipment">
 
                     <TextView
                         android:id="@+id/tvClientName"
@@ -112,16 +125,20 @@
                         android:layout_height="wrap_content"
                         android:textSize="16sp"/>
                 </LinearLayout>
-            </LinearLayout>
-        </ScrollView>
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </androidx.core.widget.NestedScrollView>
 
         <!-- Barra de Botones Inferior -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:id="@+id/bottomButtons"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:background="@color/verde_bosque"
-            android:padding="8dp">
+            android:padding="8dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
 
             <Button
                 android:id="@+id/btnMonitoring"
@@ -129,10 +146,10 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/monitoreo"
-                android:textColor="@android:color/white"
                 android:drawableTop="@drawable/monitoreo"
-                android:drawableTint="@android:color/white"/>
+                android:drawableTint="@color/white"
+                android:text="@string/monitoreo"
+                android:textColor="#000000" />
 
             <Button
                 android:id="@+id/btnFaults"
@@ -140,10 +157,10 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/falla"
-                android:textColor="@android:color/white"
                 android:drawableTop="@drawable/warning"
-                android:drawableTint="@android:color/white"/>
+                android:drawableTint="@android:color/white"
+                android:text="@string/falla"
+                android:textColor="#000000" />
 
             <Button
                 android:id="@+id/btnData"
@@ -151,10 +168,10 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/datos"
-                android:textColor="@android:color/white"
                 android:drawableTop="@drawable/data"
-                android:drawableTint="@android:color/white"/>
+                android:drawableTint="@android:color/white"
+                android:text="@string/datos"
+                android:textColor="#000000" />
 
             <Button
                 android:id="@+id/btnBitacora"
@@ -162,22 +179,36 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/bitacora"
-                android:textColor="@android:color/white"
                 android:drawableTop="@drawable/bitacora"
-                android:drawableTint="@android:color/white"/>
+                android:drawableTint="@android:color/white"
+                android:text="@string/bitacora"
+                android:textColor="#000000" />
         </LinearLayout>
-    </LinearLayout>
 
-    <!-- Navigation View (menú lateral) - DEBE SER EL ÚLTIMO ELEMENTO -->
+        <!-- ProgressBar superpuesto sobre el contenido -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:visibility="gone"/>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Navigation View (menú lateral) - ÚLTIMO ELEMENTO -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
-        android:layout_width="280dp"
+        android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="start"
+        android:fitsSystemWindows="true"
+        android:clipToPadding="false"
         android:background="@android:color/white"
         app:headerLayout="@layout/nav_header"
         app:menu="@menu/navigation_menu"
         app:itemTextColor="@color/black"
-        app:itemIconTint="@color/verde_bosque"/>
+        app:itemIconTint="@color/verde_bosque"
+        app:elevation="16dp"/>
 </androidx.drawerlayout.widget.DrawerLayout>

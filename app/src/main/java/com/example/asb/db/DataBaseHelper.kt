@@ -72,74 +72,11 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             }
         ).forEach { db.insert(TABLE_USERS, null, it) }
 
-        // Insertar proyectos
-        val projects = listOf(
-            ProjectData("001", "0001", "02", "Pozo de agua"),  // Leyva
-            ProjectData("001", "0002", "03", "Sistema hidroneumático"),  // Leyva
-            ProjectData("002", "0003", "04", "Cárcamo de bombeo"),  // Franco
-            ProjectData("003", "0004", "01", "SVV Industrial")  // Nuevo proyecto SVV para Carlos (user_id = 003)
-        )
-
-        projects.forEach { project ->
-            db.insert(TABLE_CLIENT_PROJECTS, null,
-                ContentValues().apply {
-                    put(COL_USER_ID, project.userId)
-                    put(COL_ORDER_ID, project.orderId)
-                    put(COL_PROJECT_TYPE, project.type)
-                    put(COL_PROJECT_NAME, project.name)
-                }
-            )
-        }
     }
-
-    // Clase de apoyo para mejor legibilidad
-    private data class ProjectData(
-        val userId: String,
-        val orderId: String,
-        val type: String,
-        val name: String
-    )
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         db.execSQL("DROP TABLE IF EXISTS $TABLE_CLIENT_PROJECTS")
         db.execSQL("DROP TABLE IF EXISTS $TABLE_USERS")
         onCreate(db)
-    }
-
-    // Métodos optimizados
-    fun validateUser(username: String, password: String): Boolean {
-        return readableDatabase.query(
-            TABLE_USERS,
-            arrayOf(COL_ID),
-            "$COL_USERNAME = ? AND $COL_PASSWORD = ?",
-            arrayOf(username, password),
-            null, null, null
-        ).use { it.count > 0 }
-    }
-
-    fun getUserId(username: String): Long {
-        readableDatabase.query(
-            TABLE_USERS,
-            arrayOf(COL_ID),
-            "$COL_USERNAME = ?",
-            arrayOf(username),
-            null, null, null
-        ).use { cursor ->
-            return if (cursor.moveToFirst()) cursor.getLong(0) else -1L
-        }
-    }
-
-    fun getProjectInfo(userId: String, orderId: String): Pair<String, String>? {
-        readableDatabase.query(
-            TABLE_CLIENT_PROJECTS,
-            arrayOf(COL_PROJECT_TYPE, COL_PROJECT_NAME),
-            "$COL_USER_ID = ? AND $COL_ORDER_ID = ?",
-            arrayOf(userId, orderId),
-            null, null, null
-        ).use { cursor ->
-            return if (cursor.moveToFirst()) {
-                cursor.getString(0) to cursor.getString(1)
-            } else null
-        }
     }
 }

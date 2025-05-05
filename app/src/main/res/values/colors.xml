@@ -40,4 +40,9 @@
     <color name="danger_red">#F44336</color>
     <color name="warning_orange">#FF9800</color>
     <color name="safe_green">#4CAF50</color>
+
+    <color name="background_gray">#F5F5F5</color>
+    <color name="primary_text">#212121</color>
+    <color name="secondary_text">#757575</color>
+    <color name="light_red">#FFF5F5</color>
 </resources>

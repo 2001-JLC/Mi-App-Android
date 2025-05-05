@@ -2,100 +2,107 @@ package com.example.asb.auth
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.example.asb.MainActivity
 import com.example.asb.databinding.ActivityLoginBinding
-import com.example.asb.db.DatabaseHelper
+import com.example.asb.network.ApiClient
+import com.example.asb.network.model.LoginRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class LoginActivity : AppCompatActivity() {
-
+    // ViewBinding para acceder a las vistas del layout
     private lateinit var binding: ActivityLoginBinding
-    private lateinit var dbHelper: DatabaseHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Infla el layout usando ViewBinding
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        dbHelper = DatabaseHelper(applicationContext)
+
+        // Configura el botón de login al crear la actividad
         setupLoginButton()
     }
 
     private fun setupLoginButton() {
+        // Asigna un click listener al botón de login
         binding.btnLogin.setOnClickListener {
+            // Obtiene los valores de los campos de texto
             val username = binding.etUsername.text.toString().trim()
             val password = binding.etPassword.text.toString().trim()
-            val workOrder = binding.etWorkOrder.text.toString().trim().padStart(4, '0')
 
-            if (username.isEmpty() || password.isEmpty() || workOrder.isEmpty()) {
-                Toast.makeText(this, "Complete todos los campos", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+            // Valida que los campos no estén vacíos
+            if (username.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Ingrese usuario y contraseña", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener // Sale si hay campos vacíos
             }
 
-            attemptLogin(username, password, workOrder)
+            // Intenta hacer login si los campos son válidos
+            attemptLogin(username, password)
         }
     }
 
-    private fun attemptLogin(username: String, password: String, workOrder: String) {
+    private fun attemptLogin(username: String, password: String) {
+        // Muestra el progress bar durante la operación
+        binding.progressBar.visibility = View.VISIBLE
+
+        // Lanza una corrutina en el hilo de IO (para operaciones de red)
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                if (!dbHelper.validateUser(username, password)) {
-                    showToast("Usuario/contraseña incorrectos")
-                    return@launch
+                // Realiza la llamada a la API de login
+                val response = ApiClient.apiService.login(
+                    LoginRequest(
+                        userName = username,
+                        pass = password
+                    )
+                )
+
+                // Cambia al hilo principal para actualizar la UI
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        // Si la respuesta es exitosa, obtiene los datos
+                        val loginData = response.body()
+
+                        // Verifica si el mensaje del servidor indica éxito
+                        if (loginData?.message == "Login exitoso") {
+                            // Redirige a la actividad de selección de órdenes de trabajo
+                            startActivity(
+                                Intent(this@LoginActivity, SelectWorkOrderActivity::class.java).apply {
+                                    // Pasa el token y el ID de cliente como extras
+                                    putExtra("TOKEN", loginData.token)
+                                    putExtra("ID_CLIENTE", loginData.idCliente.toString())
+                                }
+                            )
+                            // Finaliza esta actividad para que no se pueda volver atrás
+                            finish()
+                        } else {
+                            // Muestra mensaje de error si las credenciales son incorrectas
+                            showToast(loginData?.message ?: "Credenciales incorrectas")
+                        }
+                    } else {
+                        // Muestra error de la respuesta si no fue exitosa
+                        showToast("Error: ${response.errorBody()?.string() ?: "Código ${response.code()}"}")
+                    }
                 }
-
-                val userId = dbHelper.getUserId(username).toString().padStart(3, '0')
-                val projectInfo = dbHelper.getProjectInfo(userId, workOrder)
-
-                if (projectInfo == null) {
-                    showToast("Orden de trabajo no válida para este usuario")
-                    return@launch
-                }
-
-                val (projectType, projectName) = projectInfo
-                launchMainActivity(username, userId, workOrder, projectType, projectName)
-
             } catch (e: Exception) {
-                showToast("Error: ${e.message}")
-                Log.e("LOGIN_ERROR", "Error en login", e)
+                // Maneja errores de conexión
+                showToast("Error de conexión: ${e.message}")
+            } finally {
+                // Oculta el progress bar al finalizar (éxito o error)
+                withContext(Dispatchers.Main) {
+                    binding.progressBar.visibility = View.GONE
+                }
             }
         }
     }
 
+    // Función de extensión para mostrar Toasts de forma segura
     private suspend fun showToast(message: String) {
         withContext(Dispatchers.Main) {
             Toast.makeText(this@LoginActivity, message, Toast.LENGTH_SHORT).show()
         }
-    }
-
-    private suspend fun launchMainActivity(
-        username: String,
-        userId: String,
-        workOrder: String,
-        projectType: String,
-        projectName: String
-    ) {
-        withContext(Dispatchers.Main) {
-            startActivity(
-                Intent(this@LoginActivity, MainActivity::class.java).apply {
-                    putExtra("MQTT_TOPIC_BASE", "$userId/$workOrder/$projectType/02")
-                    putExtra("USERNAME", username)
-                    putExtra("WORK_ORDER", workOrder)
-                    putExtra("PROJECT_TYPE", projectType)
-                    putExtra("PROJECT_NAME", projectName)
-                }
-            )
-            finish()
-        }
-    }
-
-    override fun onDestroy() {
-        dbHelper.close()
-        super.onDestroy()
     }
 }

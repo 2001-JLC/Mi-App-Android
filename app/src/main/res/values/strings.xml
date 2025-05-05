@@ -128,4 +128,11 @@
         ASBombeo es una empresa especializada en sistemas de bombeo
         y control de agua, ofreciendo soluciones innovadoras y tecnología
         de punta para el manejo eficiente de recursos hídricos.</string>
+
+    <!-- order .xml  -->
+    <string name="seleccione_su_orden_de_trabajo">Seleccione su orden de trabajo</string>
+    <string name="no_hay_ordenes_disponibles">No hay órdenes de trabajo disponibles</string>
+    <string name="continuar">Continuar</string>
+    <string name="seleccione">Selecionar\n</string>
+    <string name="warning_icon_desc">Icono de advertencia</string>
 </resources>

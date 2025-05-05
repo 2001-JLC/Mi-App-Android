@@ -2,6 +2,8 @@ package com.example.asb
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
@@ -14,25 +16,67 @@ import com.example.asb.faults.FaultsActivity
 import com.example.asb.monitoring.MonitoringActivity
 import com.google.android.material.navigation.NavigationView
 import com.example.asb.about.AboutActivity
+import com.example.asb.network.model.ProjectResponse
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var drawerLayout: DrawerLayout
+    private val mainScope = CoroutineScope(Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val mqttTopicBase = intent.getStringExtra("MQTT_TOPIC_BASE") ?: "001/0001/02/02"
-        val username = intent.getStringExtra("USERNAME") ?: ""
-        val workOrder = intent.getStringExtra("WORK_ORDER") ?: ""
-        val projectName = intent.getStringExtra("PROJECT_NAME") ?: getDefaultProjectName(mqttTopicBase)
+        // Mostrar progreso mientras se carga
+        binding.progressBar.visibility = View.VISIBLE
 
-        setupUI(mqttTopicBase, username, workOrder, projectName)
-        setupButtons(mqttTopicBase)
-        setupNavigationDrawer()
-        setupBackPressHandler()
+        mainScope.launch {
+            // Operaciones en segundo plano
+            val project = withContext(Dispatchers.IO) {
+                loadProjectData()
+            }
+
+            // Actualizar UI en el hilo principal
+            if (project != null) {
+                setupUI("", project)
+                setupButtons(project)
+            } else {
+                Toast.makeText(this@MainActivity, "Error: Datos del proyecto incompletos", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+
+            setupNavigationDrawer()
+            setupBackPressHandler()
+            binding.progressBar.visibility = View.GONE
+        }
+    }
+
+    private suspend fun loadProjectData(): ProjectResponse? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val workOrderId = intent.getStringExtra("WORK_ORDER") ?: ""
+                val projectName = intent.getStringExtra("PROJECT_NAME") ?: ""
+
+                if (workOrderId.isNotEmpty() && projectName.isNotEmpty()) {
+                    ProjectResponse(
+                        id = workOrderId.toIntOrNull() ?: 0,
+                        name = projectName,
+                        tipoEquipo = "default",
+                        workOrders = listOf(workOrderId)
+                    )
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 
     private fun setupNavigationDrawer() {
@@ -46,14 +90,14 @@ class MainActivity : AppCompatActivity() {
         navigationView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.nav_about -> {
-                    // Reemplaza showAboutDialog() por esto:
-                    startActivity(Intent(this@MainActivity, AboutActivity::class.java))
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                    mainScope.launch {
+                        startActivity(Intent(this@MainActivity, AboutActivity::class.java))
+                        drawerLayout.closeDrawer(GravityCompat.START)
+                    }
                     true
                 }
                 R.id.nav_logout -> {
                     logout()
-                    drawerLayout.closeDrawer(GravityCompat.START)
                     true
                 }
                 else -> false
@@ -74,55 +118,63 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun setupUI(mqttTopic: String, username: String, workOrder: String, projectName: String) {
-        binding.ivGeneralEquipment.setImageResource(
-            when(mqttTopic.split('/')[2]) {
-                "01" -> R.mipmap.svv_general
-                "02" -> R.mipmap.pozo_general
-                "03" -> R.mipmap.hidro_general
-                "04" -> R.mipmap.carcamo_general
-                else -> R.mipmap.default_general
-            }
-        )
-        binding.tvClientName.text = getString(R.string.client_label, username)
-        binding.tvWorkOrder.text = getString(R.string.order_label, workOrder)
-        binding.tvProjectType.text = getString(R.string.project_label, projectName)
-    }
-
-    private fun getDefaultProjectName(mqttTopic: String): String {
-        return when(mqttTopic.split('/')[2]) {
-            "01" -> "SVV"
-            "02" -> "Pozo de agua"
-            "03" -> "Sistema hidroneumático"
-            "04" -> "Cárcamo de bombeo"
-            else -> "Proyecto desconocido"
+    private fun setupUI(username: String, project: ProjectResponse) {
+        mainScope.launch {
+            binding.ivGeneralEquipment.setImageResource(
+                when(project.tipoEquipo.lowercase()) {
+                    "svv" -> R.mipmap.svv_general
+                    "pozo" -> R.mipmap.pozo_general
+                    "hidro" -> R.mipmap.hidro_general
+                    "carcamo" -> R.mipmap.carcamo_general
+                    else -> R.mipmap.default_general
+                }
+            )
+            binding.tvClientName.text = getString(R.string.client_label, username)
+            binding.tvProjectType.text = project.name
+            binding.tvWorkOrder.text = project.workOrders.firstOrNull() ?: "N/A"
         }
     }
 
-    private fun setupButtons(mqttTopicBase: String) {
+    private fun setupButtons(project: ProjectResponse) {
         binding.btnMonitoring.setOnClickListener {
-            startActivity(Intent(this, MonitoringActivity::class.java).apply {
-                putExtra("MQTT_TOPIC_DATA", "$mqttTopicBase/Datos")
-                putExtra("EQUIPMENT_TYPE", mqttTopicBase.split('/')[2])
-            })
+            mainScope.launch {
+                startActivity(Intent(this@MainActivity, MonitoringActivity::class.java).apply {
+                    putExtra("PROJECT_ID", project.id.toString())
+                    putExtra("EQUIPMENT_TYPE", project.tipoEquipo)
+                })
+            }
         }
 
         binding.btnFaults.setOnClickListener {
-            startActivity(Intent(this, FaultsActivity::class.java))
+            mainScope.launch {
+                startActivity(Intent(this@MainActivity, FaultsActivity::class.java).apply {
+                    putExtra("PROJECT_ID", project.id.toString())
+                })
+            }
         }
 
         binding.btnData.setOnClickListener {
-            startActivity(Intent(this, DataActivity::class.java))
+            mainScope.launch {
+                startActivity(Intent(this@MainActivity, DataActivity::class.java))
+            }
         }
 
         binding.btnBitacora.setOnClickListener {
-            startActivity(Intent(this, BitacoraActivity::class.java))
+            mainScope.launch {
+                startActivity(Intent(this@MainActivity, BitacoraActivity::class.java))
+            }
         }
     }
 
-
     private fun logout() {
-        startActivity(Intent(this, LoginActivity::class.java))
-        finish()
+        mainScope.launch {
+            startActivity(Intent(this@MainActivity, LoginActivity::class.java))
+            finish()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mainScope.cancel() // Cancela todas las corrutinas cuando la actividad se destruye
     }
 }
