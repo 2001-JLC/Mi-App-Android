@@ -64,7 +64,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/gaugeContainer"
-        android:layout_above="@id/tvConnectionStatus"
+        android:layout_above="@id/connectionStatusContainer"
         android:fillViewport="true">
 
         <!-- Contenedor dinámico para los equipos -->
@@ -79,17 +79,32 @@
     </ScrollView>
 
     <!-- Estado de conexión MQTT (Fijo en la parte inferior) -->
-    <TextView
-        android:id="@+id/tvConnectionStatus"
+    <LinearLayout
+        android:id="@+id/connectionStatusContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="14sp"
-        android:background="#E0E0E0"
-        android:textColor="#000000"
-        android:gravity="center"
-        android:padding="8dp"
         android:layout_alignParentBottom="true"
-        android:text="@string/conectando_a_mqtt"
-        android:contentDescription="@string/connection_status_desc"/>
+        android:background="#F5F5F5"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:padding="8dp">
 
+        <!-- Icono de estado (más intuitivo que texto) -->
+        <ImageView
+            android:id="@+id/ivConnectionIcon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_cloud_off"
+            android:contentDescription="@string/connection_status_desc"/>
+
+        <!-- Texto simplificado -->
+        <TextView
+            android:id="@+id/tvConnectionStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:text="@string/conectando"
+            android:textColor="@color/black" />
+    </LinearLayout>
 </RelativeLayout>

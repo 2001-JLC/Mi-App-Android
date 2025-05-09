@@ -43,7 +43,7 @@
                 android:id="@+id/ivLogo"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@mipmap/asbombeo"
+                android:src="@mipmap/logo"
                 android:contentDescription="@string/logo_empresa"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
@@ -131,58 +131,47 @@
         <!-- Barra de Botones Inferior -->
         <LinearLayout
             android:id="@+id/bottomButtons"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:background="@color/verde_bosque"
-            android:padding="8dp"
+            android:paddingVertical="12dp"
+            android:elevation="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnMonitoring"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
+                style="@style/BottomMenuButton"
                 android:drawableTop="@drawable/monitoreo"
-                android:drawableTint="@color/white"
                 android:text="@string/monitoreo"
-                android:textColor="#000000" />
+                app:icon="@drawable/monitoreo"
+                app:iconGravity="top"/>
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnFaults"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
+                style="@style/BottomMenuButton"
                 android:drawableTop="@drawable/warning"
-                android:drawableTint="@android:color/white"
                 android:text="@string/falla"
-                android:textColor="#000000" />
+                app:icon="@drawable/warning"
+                app:iconGravity="top"/>
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnData"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
+                style="@style/BottomMenuButton"
                 android:drawableTop="@drawable/data"
-                android:drawableTint="@android:color/white"
                 android:text="@string/datos"
-                android:textColor="#000000" />
+                app:icon="@drawable/data"
+                app:iconGravity="top"/>
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnBitacora"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
+                style="@style/BottomMenuButton"
                 android:drawableTop="@drawable/bitacora"
-                android:drawableTint="@android:color/white"
                 android:text="@string/bitacora"
-                android:textColor="#000000" />
+                app:icon="@drawable/bitacora"
+                app:iconGravity="top"/>
         </LinearLayout>
 
         <!-- ProgressBar superpuesto sobre el contenido -->

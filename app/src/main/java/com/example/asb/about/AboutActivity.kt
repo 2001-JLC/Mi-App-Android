@@ -34,7 +34,7 @@ class AboutActivity : AppCompatActivity() {
         // Email
         findViewById<LinearLayout>(R.id.btnEmail).setOnClickListener {
             val intent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:contacto@asbombeo.com")
+                data = Uri.parse("mailto:felix.bahena@asbombeo.com")
             }
             startActivity(intent)
         }

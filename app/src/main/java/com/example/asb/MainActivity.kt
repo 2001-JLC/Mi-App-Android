@@ -7,14 +7,12 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
-import androidx.drawerlayout.widget.DrawerLayout
 import com.example.asb.auth.LoginActivity
 import com.example.asb.binnacle.BitacoraActivity
 import com.example.asb.databinding.ActivityMainBinding
 import com.example.asb.db.DataActivity
 import com.example.asb.faults.FaultsActivity
 import com.example.asb.monitoring.MonitoringActivity
-import com.google.android.material.navigation.NavigationView
 import com.example.asb.about.AboutActivity
 import com.example.asb.network.model.ProjectResponse
 import kotlinx.coroutines.CoroutineScope
@@ -23,9 +21,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private lateinit var drawerLayout: DrawerLayout
     private val mainScope = CoroutineScope(Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,13 +60,15 @@ class MainActivity : AppCompatActivity() {
             try {
                 val workOrderId = intent.getStringExtra("WORK_ORDER") ?: ""
                 val projectName = intent.getStringExtra("PROJECT_NAME") ?: ""
+                val clientId = intent.getStringExtra("CLIENT_ID") ?: "client_default" // Valor por defecto
 
                 if (workOrderId.isNotEmpty() && projectName.isNotEmpty()) {
                     ProjectResponse(
                         id = workOrderId.toIntOrNull() ?: 0,
                         name = projectName,
                         tipoEquipo = "default",
-                        workOrders = listOf(workOrderId)
+                        workOrders = listOf(workOrderId),
+                        clientId = clientId
                     )
                 } else {
                     null
@@ -80,20 +80,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupNavigationDrawer() {
-        drawerLayout = findViewById(R.id.drawer_layout)
-        val navigationView = findViewById<NavigationView>(R.id.nav_view)
-
-        binding.btnMenu.setOnClickListener {
-            drawerLayout.openDrawer(GravityCompat.START)
-        }
-
-        navigationView.setNavigationItemSelectedListener { menuItem ->
+        binding.navView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.nav_about -> {
-                    mainScope.launch {
-                        startActivity(Intent(this@MainActivity, AboutActivity::class.java))
-                        drawerLayout.closeDrawer(GravityCompat.START)
-                    }
+                    startActivity(Intent(this@MainActivity, AboutActivity::class.java))
+                    binding.drawerLayout.closeDrawer(GravityCompat.START)
                     true
                 }
                 R.id.nav_logout -> {
@@ -103,13 +94,17 @@ class MainActivity : AppCompatActivity() {
                 else -> false
             }
         }
+
+        binding.btnMenu.setOnClickListener {
+            binding.drawerLayout.openDrawer(GravityCompat.START)
+        }
     }
 
     private fun setupBackPressHandler() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                    drawerLayout.closeDrawer(GravityCompat.START)
+                if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    binding.drawerLayout.closeDrawer(GravityCompat.START)
                 } else {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
@@ -136,33 +131,33 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupButtons(project: ProjectResponse) {
+        val clientId = intent.getStringExtra("CLIENT_ID") ?: "client_default"
+
+        // Configuración simplificada con extension function
+        fun Intent.putProjectExtras() = apply {
+            putExtra("PROJECT_ID", project.id.toString())
+            putExtra("EQUIPMENT_TYPE", project.tipoEquipo)
+            putExtra("CLIENT_ID", clientId)
+        }
+
         binding.btnMonitoring.setOnClickListener {
-            mainScope.launch {
-                startActivity(Intent(this@MainActivity, MonitoringActivity::class.java).apply {
-                    putExtra("PROJECT_ID", project.id.toString())
-                    putExtra("EQUIPMENT_TYPE", project.tipoEquipo)
-                })
-            }
+            startActivity(Intent(this, MonitoringActivity::class.java).putProjectExtras())
         }
 
         binding.btnFaults.setOnClickListener {
-            mainScope.launch {
-                startActivity(Intent(this@MainActivity, FaultsActivity::class.java).apply {
-                    putExtra("PROJECT_ID", project.id.toString())
-                })
-            }
+            startActivity(Intent(this, FaultsActivity::class.java).putProjectExtras())
         }
 
         binding.btnData.setOnClickListener {
-            mainScope.launch {
-                startActivity(Intent(this@MainActivity, DataActivity::class.java))
-            }
+            startActivity(Intent(this, DataActivity::class.java).apply {
+                putExtra("WORK_ORDER", project.workOrders.firstOrNull())
+            })
         }
 
         binding.btnBitacora.setOnClickListener {
-            mainScope.launch {
-                startActivity(Intent(this@MainActivity, BitacoraActivity::class.java))
-            }
+            startActivity(Intent(this, BitacoraActivity::class.java).apply {
+                putExtra("WORK_ORDER", project.workOrders.firstOrNull())
+            })
         }
     }
 

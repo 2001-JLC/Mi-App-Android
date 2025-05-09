@@ -75,7 +75,6 @@
 
     <!-- MonitoringActivity  -->
     <string name="message_received">Mensaje recibido:\n%s</string>
-    <string name="connection_success">\nConexión establecida correctamente</string>
     <string name="voltage_text">Voltaje: %1$.2f V</string>
     <string name="current_text">Corriente: %1$.2f A</string>
     <string name="frequency_text">Frecuencia: %1$.2f Hz</string>
@@ -88,6 +87,9 @@
     <string name="presion_placeholder">Presión: — kg/cm²</string>
     <string name="presion_desc">Presión del sistema SVV</string>
     <string name="pressure_value"><b>Presión:</b> %1$.2f kg/cm²</string>
+    <string name="conectado">Conectado</string>
+    <string name="desconectado">Desconectado</string>
+    <string name="conectando">Conectando…</string>
     <!-- %1$.2f = 1er argumento, formato decimal con 2 decimales -->
 
     <!-- item pozo,xml  -->
@@ -125,8 +127,8 @@
     <string name="sitio_web">Sitio web</string>
     <string name="company_website">www.asbombeo.com</string>
     <string name="about_company_description">
-        ASBombeo es una empresa especializada en sistemas de bombeo
-        y control de agua, ofreciendo soluciones innovadoras y tecnología
+        ASBombeo es una empresa especializada en sistemas de bombeo y
+        control de agua, ofreciendo soluciones innovadoras y tecnología
         de punta para el manejo eficiente de recursos hídricos.</string>
 
     <!-- order .xml  -->

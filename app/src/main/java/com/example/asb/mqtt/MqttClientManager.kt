@@ -15,17 +15,19 @@ class MqttClientManager(
         try {
             mqttClient = MqttAsyncClient(serverUri, clientId, MemoryPersistence()).apply {
                 setCallback(object : MqttCallback {
-                    override fun connectionLost(cause: Throwable) {
+                    override fun connectionLost(cause: Throwable?) {
                         Log.e("MQTT", "Connection lost", cause)
-                        this@MqttClientManager.callback?.onConnectionLost(cause)
+                        this@MqttClientManager.callback?.onConnectionLost(cause ?: Throwable("Unknown error"))
                     }
 
-                    override fun messageArrived(topic: String, message: MqttMessage) {
-                        Log.d("MQTT", "Message arrived on $topic: $message")
-                        this@MqttClientManager.callback?.onMessageReceived(topic, message.toString())
+                    override fun messageArrived(topic: String?, message: MqttMessage?) {
+                        if (topic != null && message != null) {
+                            this@MqttClientManager.callback?.onMessageReceived(topic, String(message.payload))
+                            Log.d("MQTT", "Message arrived on $topic: ${String(message.payload)}")
+                        }
                     }
 
-                    override fun deliveryComplete(token: IMqttDeliveryToken) {
+                    override fun deliveryComplete(token: IMqttDeliveryToken?) {
                         Log.d("MQTT", "Message delivered")
                     }
                 })
@@ -33,20 +35,21 @@ class MqttClientManager(
                 val options = MqttConnectOptions().apply {
                     isCleanSession = true
                     isAutomaticReconnect = true
-                    connectionTimeout = 30
+                    connectionTimeout = 60 // Reduce el timeout para debug
                     keepAliveInterval = 60
                 }
 
                 connect(options, null, object : IMqttActionListener {
-                    override fun onSuccess(asyncActionToken: IMqttToken) {
+                    override fun onSuccess(asyncActionToken: IMqttToken?) {
                         Log.d("MQTT", "Connection success")
                         this@MqttClientManager.callback?.onConnectionSuccess()
                         callback(true)
                     }
 
-                    override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
+                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                         Log.e("MQTT", "Connection failed", exception)
-                        callback(false)
+                        this@MqttClientManager.callback?.onConnectionLost(exception ?: Throwable("Connection failed"))
+                        callback(false) // Asegúrate de que esto se ejecute
                     }
                 })
             }
@@ -59,11 +62,11 @@ class MqttClientManager(
     fun subscribe(topic: String, qos: Int = 1) {
         try {
             mqttClient?.subscribe(topic, qos)?.actionCallback = object : IMqttActionListener {
-                override fun onSuccess(asyncActionToken: IMqttToken) {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
                     Log.d("MQTT", "Subscribed to $topic")
                 }
 
-                override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                     Log.e("MQTT", "Subscribe failed", exception)
                 }
             }
@@ -78,7 +81,7 @@ class MqttClientManager(
 
     fun disconnect() {
         try {
-            mqttClient?.disconnect()?.waitForCompletion() // Espera a que se complete la desconexión
+            mqttClient?.disconnect()?.waitForCompletion()
         } catch (e: Exception) {
             Log.e("MQTT", "Disconnect error", e)
         }

@@ -13,54 +13,86 @@ import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.Toast
 import com.example.asb.models.DynamicEquipment
+import com.example.asb.mqtt.MqttTestHelper
 import com.example.asb.utils.JsonParser
 
 class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
     private lateinit var binding: ActivityMonitoringBinding
     private lateinit var mqttManager: MqttClientManager
-    private lateinit var mqttTopic: String
+    private lateinit var mqttTestHelper: MqttTestHelper //Quitar o comentar despues de la prueba
+    // Eliminamos la declaración redundante de mqttTopic aquí
     private lateinit var equipmentType: String
     private lateinit var jsonParser: JsonParser
     private var ultimaPresion: Double? = null
 
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMonitoringBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        // Estado: Conectando (al iniciar la actividad)
+        binding.ivConnectionIcon.setImageResource(R.drawable.ic_cloud_sync)
+        binding.tvConnectionStatus.text = getString(R.string.conectando)
+        binding.connectionStatusContainer.setBackgroundColor(Color.parseColor("#FFEBEE")) // Rojo claro
+
+
+        // Inicializamos el jsonParser
+        jsonParser = JsonParser()
+
+        // Obtenemos el tipo de equipo del intent
+        //equipmentType = intent.getStringExtra("EQUIPMENT_TYPE") ?: "02" // Valor por defecto
+        equipmentType = "01"
+
+        // Llamamos a setupGauge al inicio
+        setupGauge()
+
+        // 1. Obtén los datos de la OT seleccionada
+        val clientId = intent.getStringExtra("CLIENT_ID") ?: "client_default"
+        val projectId = intent.getStringExtra("PROJECT_ID") ?: "project_default"
+
+        // 2. Genera el tópico dinámico (usamos variable local, no propiedad de clase)
+        val mqttTopic = "asb/telemetria/$clientId/$projectId/operaciones/bombas/data"
+        Log.d("MQTT_TOPIC", "Tópico generado: $mqttTopic")
+
+        // 3. Conecta al broker con el tópico
+        val brokerUrl = "ws://tu_broker:8083/mqtt"  // Ajusta la URL
+        mqttManager = MqttClientManager(brokerUrl)
+        mqttManager.setCallback(this)
+        mqttManager.connect { success ->
+            if (success) {
+                // onConnectionSuccess() se llamará automáticamente vía callback
+                mqttManager.subscribe(mqttTopic)
+            } else {
+                runOnUiThread {
+                    // Actualiza la UI si falla inmediatamente
+                    binding.ivConnectionIcon.setImageResource(R.drawable.ic_cloud_off)
+                    binding.tvConnectionStatus.text = getString(R.string.desconectado)
+                    binding.connectionStatusContainer.setBackgroundColor(Color.parseColor("#FFEBEE"))
+                    Toast.makeText(this, "Error al conectar", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        // Conexión de PRUEBA (Mosquitto) - Temporal
+        mqttTestHelper = MqttTestHelper(this) //quitar o comentar despues de las pruebas
+        mqttTestHelper.startTestConnection() //quitar o comentar
+
+    }
+
     private fun setupGauge() {
-        // Configuración inicial
+        // Configuración inicial del gauge
         binding.pressureGauge.setPressure(2.5f)
         binding.tvPressureStatus.visibility = View.GONE
     }
 
     private fun updateGauge(pressure: Double) {
         binding.pressureGauge.setPressure(pressure.toFloat())
-
-        // Actualizar estado textual
         binding.tvPressureStatus.text = when {
             pressure > 3.2 -> "ALTA PRESIÓN (${"%.2f".format(pressure)} kg/cm²)"
             pressure < 2.4 -> "BAJA PRESIÓN (${"%.2f".format(pressure)} kg/cm²)"
             else -> "PRESIÓN NORMAL (${"%.2f".format(pressure)} kg/cm²)"
-        }
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivityMonitoringBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        setupGauge()
-
-        jsonParser = JsonParser()
-
-        // 1. Obtener parámetros
-        mqttTopic = intent.getStringExtra("MQTT_TOPIC_DATA") ?: "001/0001/02/02/Datos"
-        equipmentType = intent.getStringExtra("EQUIPMENT_TYPE") ?: "02"
-        Log.d("EQUIPMENT_DEBUG", "Tipo de equipo recibido: $equipmentType")  // ← Añadir esto
-
-
-        // 2. Configurar MQTT
-        mqttManager = MqttClientManager("tcp://test.mosquitto.org:1883").apply {
-            setCallback(this@MonitoringActivity)
-            connect { success ->
-                if (success) subscribe(mqttTopic, 1)
-            }
         }
     }
 
@@ -81,21 +113,20 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
                 binding.tvPressureStatus.visibility = View.GONE
             }
 
-            // Resto de tu lógica para mostrar equipos...
             binding.equipmentContainer.removeAllViews()
             response.equipos.forEach { equipo ->
                 mostrarEquipo(equipo.apply { tipo = equipmentType })
             }
         }
     }
+
     private fun mostrarEquipo(equipo: DynamicEquipment) {
         val itemView = LayoutInflater.from(this)
             .inflate(R.layout.item_pozo_dynamic, binding.equipmentContainer, false)
 
-        // Imagen según el tipo (usando equipo.tipo)
         itemView.findViewById<ImageView>(R.id.ivEquipmentImage).setImageResource(
             when(equipo.tipo) {
-                "01" -> R.mipmap.svv
+                "01", "svv" -> R.mipmap.svv
                 "02" -> R.mipmap.bomba_pozo
                 "03" -> R.mipmap.hidro
                 "04" -> R.mipmap.carcamo_2b
@@ -103,10 +134,8 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
             }
         )
 
-        // Nombre del equipo
         itemView.findViewById<TextView>(R.id.tvNombre).text = equipo.nombre
 
-        // Mostrar datos dinámicos
         val contenedor = itemView.findViewById<LinearLayout>(R.id.dynamicDataContainer)
         contenedor.removeAllViews()
 
@@ -121,21 +150,25 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
         binding.equipmentContainer.addView(itemView)
     }
 
+    // En tu MonitoringActivity:
     override fun onConnectionSuccess() {
         runOnUiThread {
-            binding.tvConnectionStatus.text = getString(R.string.connected_mqtt)
-            binding.tvConnectionStatus.setBackgroundColor(Color.GREEN)
+            binding.ivConnectionIcon.setImageResource(R.drawable.ic_cloud_done)
+            binding.tvConnectionStatus.text = getString(R.string.conectado)
+            binding.connectionStatusContainer.setBackgroundColor(Color.parseColor("#E8F5E9")) // Verde claro
         }
     }
 
     override fun onConnectionLost(cause: Throwable) {
         runOnUiThread {
-            binding.tvConnectionStatus.text = getString(R.string.connection_lost, cause.message ?: "Sin mensaje")
-            binding.tvConnectionStatus.setBackgroundColor(Color.RED)
+            binding.ivConnectionIcon.setImageResource(R.drawable.ic_cloud_off)
+            binding.tvConnectionStatus.text = getString(R.string.desconectado)
+            binding.connectionStatusContainer.setBackgroundColor(Color.parseColor("#FFEBEE")) // Rojo claro
         }
     }
 
     override fun onDestroy() {
+        mqttTestHelper.stopTestConnection() //comentar o quitar(es para la prueba cons moquito)
         mqttManager.disconnect()
         super.onDestroy()
     }

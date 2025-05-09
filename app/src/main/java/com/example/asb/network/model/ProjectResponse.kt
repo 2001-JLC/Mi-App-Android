@@ -9,5 +9,6 @@ data class ProjectResponse(
     val id: Int, // ID del proyecto
     val name: String, // Nombre del proyecto
     val tipoEquipo: String, // Tipo de equipo
-    val workOrders: List<String> // Lista de órdenes de trabajo
+    val workOrders: List<String>, // Lista de órdenes de trabajo
+    val clientId: String
 ) : Parcelable

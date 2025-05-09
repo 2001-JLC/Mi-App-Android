@@ -29,6 +29,11 @@ class SelectWorkOrderActivity : AppCompatActivity() {
     // Máximo de reintentos
     private val maxRetries = 3
 
+    companion object {
+        const val BASE_TOPIC = "asb/telemetria"
+        const val TOPIC_SUFFIX = "operaciones/bombas/data"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Infla el layout usando view binding
@@ -65,19 +70,25 @@ class SelectWorkOrderActivity : AppCompatActivity() {
         // Configura el listener del botón Continuar
         binding.btnContinue.setOnClickListener {
             if (workOrders.isNotEmpty() && binding.spinnerWorkOrders.text.isNotEmpty()) {
-                // Obtiene el texto seleccionado
                 val selectedName = binding.spinnerWorkOrders.text.toString()
-
-                // Busca la orden correspondiente en la lista
                 val selected = workOrders.find { it.name == selectedName } ?: run {
                     showToast("Orden no válida")
                     return@setOnClickListener
                 }
 
-                // Inicia MainActivity con los datos de la orden seleccionada
+                // Obtén el ID del cliente del intent
+                val clientId = intent.getStringExtra("ID_CLIENTE") ?: "client_default"
+
+                // Genera el tópico dinámico
+                val mqttTopic = "$BASE_TOPIC/$clientId/${selected.id}/$TOPIC_SUFFIX"
+                Log.d("MQTT_TOPIC", "Tópico generado: $mqttTopic")
+
+                // Inicia MainActivity con todos los datos necesarios
                 startActivity(Intent(this, MainActivity::class.java).apply {
                     putExtra("WORK_ORDER", selected.id.toString())
                     putExtra("PROJECT_NAME", selected.name)
+                    putExtra("CLIENT_ID", clientId)  // <-- Añade esto
+                    putExtra("MQTT_TOPIC", mqttTopic)  // <-- Nuevo: envía el tópico ya generado
                 })
             }
         }
