@@ -15,6 +15,7 @@ import com.example.asb.faults.FaultsActivity
 import com.example.asb.monitoring.MonitoringActivity
 import com.example.asb.about.AboutActivity
 import com.example.asb.network.model.ProjectResponse
+import com.example.asb.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -163,7 +164,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun logout() {
         mainScope.launch {
-            startActivity(Intent(this@MainActivity, LoginActivity::class.java))
+            // Limpia las credenciales guardadas
+            SessionManager.clearSession(this@MainActivity)
+
+            // Redirige al Login y limpia el stack de actividades
+            startActivity(
+                Intent(this@MainActivity, LoginActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+            )
             finish()
         }
     }

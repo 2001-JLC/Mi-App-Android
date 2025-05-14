@@ -20,15 +20,18 @@ gson = "2.10.1"
 material = "1.12.0"
 legacySupportV4 = "1.0.0"
 retrofit = "2.9.0"
+securityCryptoVersion = "1.1.0-alpha06"
 uiTestAndroid = "1.7.8"
 espressoContrib = "3.6.1"
 espressoCoreVersion = "3.0.2"
-mpandroidchart = "3.1.0"  # Versión de la librería
+mpandroidchart = "3.1.0"
+biometricKtx = "1.2.0-alpha05" # Versión de la librería
 
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-localbroadcastmanager = { module = "androidx.localbroadcastmanager:localbroadcastmanager", version.ref = "localbroadcastmanager" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCryptoVersion" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
@@ -57,6 +60,7 @@ androidx-espresso-contrib = { group = "androidx.test.espresso", name = "espresso
 espresso-core = { group = "com.android.support.test.espresso", name = "espresso-core", version.ref = "espressoCoreVersion" }
 mpandroidchart = { module = "com.github.PhilJay:MPAndroidChart", version.ref = "mpandroidchart" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
+androidx-biometric-ktx = { group = "androidx.biometric", name = "biometric-ktx", version.ref = "biometricKtx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

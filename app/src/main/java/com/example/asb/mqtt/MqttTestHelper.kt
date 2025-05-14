@@ -1,9 +1,11 @@
 package com.example.asb.mqtt
 
 import android.util.Log
+
 //en este clase se uso de prueba para monitoriar villas garden con moquito
 class MqttTestHelper(private val mainHandler: MqttCallbackHandler) {
-    private val testBrokerUrl = "tcp://test.mosquitto.org:1883" // Broker público
+    //private val testBrokerUrl = "tcp://test.mosquitto.org:1883" // Broker público
+    private val testBrokerUrl = "tcp://broker.hivemq.com:1883"
     private val testTopic = "003/0004/01/02/Datos" // Tópico fijo para pruebas
     private lateinit var testMqttManager: MqttClientManager
 
