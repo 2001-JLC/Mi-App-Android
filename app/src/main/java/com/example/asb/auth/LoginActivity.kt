@@ -1,6 +1,5 @@
 package com.example.asb.auth
 
-import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -17,7 +16,7 @@ import kotlinx.coroutines.withContext
 
 class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
-    private val biometricHelper = BiometricHelper(this)
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,24 +34,7 @@ class LoginActivity : AppCompatActivity() {
             SessionManager.clearSession(this)
         }
 
-        // Verificar si hay credenciales guardadas al iniciar
-        checkSavedCredentials()
         setupLoginButton()
-    }
-
-    private fun checkSavedCredentials() {
-        val savedUser = SessionManager.getUsername(this)
-        if (!savedUser.isNullOrEmpty() && SessionManager.shouldUseBiometric(this)) {
-            binding.etUsername.setText(savedUser)
-            biometricHelper.showPrompt(
-                title = "Iniciar sesión con huella",
-                onSuccess = { goToNextScreenWithToken() },
-                onError = { error ->
-                    Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
-                    // No hacemos nada, el usuario puede ingresar manualmente
-                }
-            )
-        }
     }
 
     private fun setupLoginButton() {
@@ -92,10 +74,25 @@ class LoginActivity : AppCompatActivity() {
                         response.body()?.message != "Login exitoso" -> {
                             showToast(response.body()?.message ?: "Credenciales incorrectas")
                         }
-                        else -> {
+                        else -> {  // <- CASO DE ÉXITO QUE FALTABA
                             response.body()?.let { loginData ->
-                                handleSuccessfulLogin(username, loginData.token, loginData.idCliente.toString())
-                            }
+                                // Guardar sesión
+                                SessionManager.saveSession(
+                                    context = this@LoginActivity,
+                                    username = username,
+                                    token = loginData.token,
+                                    clientId = loginData.idCliente.toString()
+                                )
+                                // Redirigir a la siguiente pantalla
+                                startActivity(
+                                    Intent(this@LoginActivity, SelectWorkOrderActivity::class.java).apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        putExtra("TOKEN", loginData.token)
+                                        putExtra("ID_CLIENTE", loginData.idCliente.toString())
+                                    }
+                                )
+                                finish()
+                            }?: showToast("Error: Datos de sesión inválidos") // Manejo por si loginData es null
                         }
                     }
                 }
@@ -108,60 +105,6 @@ class LoginActivity : AppCompatActivity() {
                     binding.progressBar.visibility = View.GONE
                 }
             }
-        }
-    }
-
-    private fun handleSuccessfulLogin(username: String, token: String, clientId: String) {
-        // Preguntar si quiere usar huella (solo si no está ya configurado)
-        if (!SessionManager.shouldUseBiometric(this)) {
-            showBiometricDialog(username, token, clientId)
-        } else {
-            goToNextScreen(token, clientId)
-        }
-    }
-
-    private fun showBiometricDialog(username: String, token: String, clientId: String) {
-        AlertDialog.Builder(this)
-            .setTitle("¿Usar huella en próximos inicios?")
-            .setMessage("Puedes agilizar tu acceso futuro usando tu huella dactilar")
-            .setPositiveButton("Sí") { _, _ ->
-                SessionManager.saveSession(
-                    context = this,
-                    username = username,
-                    token = token,
-                    useBiometric = true,
-                    clientId = clientId
-                )
-                goToNextScreen(token, clientId)
-            }
-            .setNegativeButton("No") { _, _ ->
-                SessionManager.saveSession(
-                    context = this,
-                    username = username,
-                    token = token,
-                    useBiometric = false,
-                    clientId = clientId
-                )
-                goToNextScreen(token, clientId)
-            }
-            .setCancelable(false)
-            .show()
-    }
-
-    private fun goToNextScreen(token: String, clientId: String) {
-        startActivity(
-            Intent(this, SelectWorkOrderActivity::class.java).apply {
-                putExtra("TOKEN", token)
-                putExtra("ID_CLIENTE", clientId)
-            }
-        )
-        finish()
-    }
-
-    // Actualiza este método para verificar token válido
-    private fun goToNextScreenWithToken() {
-        SessionManager.getValidToken(this)?.let { token ->
-            goToNextScreen(token, SessionManager.getClientId(this) ?: "")
         }
     }
 
