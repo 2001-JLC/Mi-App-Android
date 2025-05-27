@@ -14,9 +14,12 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
 import com.example.asb.models.DynamicEquipment
 import com.example.asb.mqtt.MqttTestHelper
+import com.example.asb.test.ElectricTestUtils
 import com.example.asb.utils.JsonParser
+import kotlinx.coroutines.launch
 
 class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
     private lateinit var binding: ActivityMonitoringBinding
@@ -100,24 +103,66 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
         runOnUiThread {
             val response = jsonParser.parseCombinedData(message) ?: return@runOnUiThread
 
-            if (equipmentType == "01") { // Solo para SVV
+            // 1. Mostrar presión en el gauge (SVV)
+            if (equipmentType == "01") {
                 binding.gaugeContainer.visibility = View.VISIBLE
                 binding.tvPressureStatus.visibility = View.VISIBLE
 
                 val pressure = response.presion ?: ultimaPresion ?: 2.5
                 updateGauge(pressure)
-
                 if (response.presion != null) ultimaPresion = pressure
             } else {
                 binding.gaugeContainer.visibility = View.GONE
                 binding.tvPressureStatus.visibility = View.GONE
             }
 
+            // 2. Verificar anomalías
+            response.equipos.forEach { equipo ->
+                val estado = equipo.datos["ESTADO"]?.toString() ?: "DESCONOCIDO"
+
+                // Verificar voltaje
+                (equipo.datos["VOLTAJE_SALIDA"] as? Double)?.let { voltage ->
+                    lifecycleScope.launch {
+                        val esAnomalia = ElectricTestUtils.checkAndLogVoltage(
+                            context = this@MonitoringActivity,
+                            voltage = voltage,
+                            equipmentName = equipo.nombre,
+                            currentStatus = estado
+                        )
+                        if (esAnomalia) mostrarAlerta(equipo.nombre, "voltaje")
+                    }
+                }
+
+                // Verificar presión (solo para SVV)
+                if (equipmentType == "01") {
+                    (equipo.datos["PRESION"] as? Double)?.let { pressure ->
+                        lifecycleScope.launch {
+                            val esAnomalia = ElectricTestUtils.checkAndLogPressure(
+                                context = this@MonitoringActivity,
+                                pressure = pressure,
+                                equipmentName = equipo.nombre,
+                                currentStatus = estado
+                            )
+                            if (esAnomalia) mostrarAlerta(equipo.nombre, "presión")
+                        }
+                    }
+                }
+            }
+
+            // 3. Mostrar equipos
             binding.equipmentContainer.removeAllViews()
             response.equipos.forEach { equipo ->
                 mostrarEquipo(equipo.apply { tipo = equipmentType })
             }
         }
+    }
+
+    private fun mostrarAlerta(nombreEquipo: String, tipoAnomalia: String) {
+        Toast.makeText(
+            this,
+            "¡Alerta! $tipoAnomalia anormal en $nombreEquipo",
+            Toast.LENGTH_LONG
+        ).show()
     }
 
     private fun mostrarEquipo(equipo: DynamicEquipment) {

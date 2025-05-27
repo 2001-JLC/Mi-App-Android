@@ -137,4 +137,15 @@
     <string name="continuar">Continuar</string>
     <string name="seleccione">Selecionar\n</string>
     <string name="warning_icon_desc">Icono de advertencia</string>
+
+    <!--AnomaliesAdapter.kt  -->
+    <string name="value_format">Valor: %1$.2f</string>
+    <string name="date_format">Fecha: %1$s</string>
+    <string name="voltage_low">Voltaje bajo</string>
+    <string name="voltage_high">Voltaje alto</string>
+    <string name="pressure_low">Presión baja</string>
+    <string name="pressure_high">Presión alta</string>
+
+    <!--activity_data.xml  -->
+    <string name="seleccione_equipo">Seleccione un equipo para ver su historial</string>
 </resources>

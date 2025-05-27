@@ -45,7 +45,7 @@ object SessionManager {
             clientId?.let { putString(KEY_CLIENT_ID, it) }  // Guarda clientId si no es null
             apply()  // Aplica los cambios (async)
         }
-    }
+    }  
 
 
     /**
