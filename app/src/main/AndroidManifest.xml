@@ -53,6 +53,9 @@
             android:name=".about.AboutActivity"
             android:exported="false"/> <!-- exported=false porque es solo para uso interno -->
 
+        <activity android:name=".db.DataActivity" android:exported="false" />
+        <activity android:name=".test.EquipmentHistoryActivity" android:exported="false" />
+
     </application>
 
 </manifest>

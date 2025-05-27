@@ -87,8 +87,8 @@ class SelectWorkOrderActivity : AppCompatActivity() {
                 startActivity(Intent(this, MainActivity::class.java).apply {
                     putExtra("WORK_ORDER", selected.id.toString())
                     putExtra("PROJECT_NAME", selected.name)
-                    putExtra("CLIENT_ID", clientId)  // <-- Añade esto
-                    putExtra("MQTT_TOPIC", mqttTopic)  // <-- Nuevo: envía el tópico ya generado
+                    putExtra("CLIENT_ID", clientId)
+                    putExtra("MQTT_TOPIC", mqttTopic)  // envía el tópico ya generado
                 })
             }
         }
