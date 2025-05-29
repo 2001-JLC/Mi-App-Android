@@ -14,8 +14,13 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.lifyleScopeai
 import com.example.asb.models.DynamicEquipment
+import com.example.asb.mqtt.MqttRepository
 import com.example.asb.mqtt.MqttTestHelper
 import com.example.asb.test.ElectricTestUtils
 import com.example.asb.utils.JsonParser
@@ -23,65 +28,103 @@ import kotlinx.coroutines.launch
 
 class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
     private lateinit var binding: ActivityMonitoringBinding
-    private lateinit var mqttManager: MqttClientManager
-    private lateinit var mqttTestHelper: MqttTestHelper //Quitar o comentar despues de la prueba
-    // Eliminamos la declaración redundante de mqttTopic aquí
-    private lateinit var equipmentType: String
+    private lateinit var viewModel: MonitoringViewModel
     private lateinit var jsonParser: JsonParser
     private var ultimaPresion: Double? = null
+    private lateinit var equipmentType: String
+    private val currentMqttTopic: String by lazy {
+        intent.getStringExtra("MQTT_TOPIC") ?: run {
+            val clientId = intent.getStringExtra("CLIENT_ID") ?: "client_default"
+            val projectId = intent.getStringExtra("PROJECT_ID") ?: "project_default"
+            // Fallback seguro con registro de advertencia
+            Log.w("MQTT", "Usando tópico fallback - Verificar MainActivity")
+            "asb/telemetria/$clientId/$projectId/operaciones/bombas/data"
+        }
+    }
+    private val useTestBroker = false
 
+    // MQTT (Parte modificada)
+    private lateinit var mqttManager: MqttClientManager // Única instancia
+
+    private fun mostrarEquipos(equipos: List<DynamicEquipment>) {
+        binding.equipmentContainer.removeAllViews()
+        equipos.forEach { equipo ->
+            mostrarEquipo(equipo.apply { tipo = equipmentType })
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMonitoringBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Estado: Conectando (al iniciar la actividad)
-        binding.ivConnectionIcon.setImageResource(R.drawable.ic_cloud_sync)
-        binding.tvConnectionStatus.text = getString(R.string.conectando)
-        binding.connectionStatusContainer.setBackgroundColor(Color.parseColor("#FFEBEE")) // Rojo claro
-
-
-        // Inicializamos el jsonParser
         jsonParser = JsonParser()
-
-        // Obtenemos el tipo de equipo del intent
-        //equipmentType = intent.getStringExtra("EQUIPMENT_TYPE") ?: "02" // Valor por defecto
-        equipmentType = "01"
-
-        // Llamamos a setupGauge al inicio
+        equipmentType = intent.getStringExtra("EQUIPMENT_TYPE") ?: "01" // ⬅️ Valor por defecto
         setupGauge()
 
-        // 1. Obtén los datos de la OT seleccionada
-        val clientId = intent.getStringExtra("CLIENT_ID") ?: "client_default"
-        val projectId = intent.getStringExtra("PROJECT_ID") ?: "project_default"
+        Log.d("MQTT", "Tópico utilizado: $currentMqttTopic")
 
-        // 2. Genera el tópico dinámico (usamos variable local, no propiedad de clase)
-        val mqttTopic = "asb/telemetria/$clientId/$projectId/operaciones/bombas/data"
-        Log.d("MQTT_TOPIC", "Tópico generado: $mqttTopic")
+        viewModel = ViewModelProvider(
+            this,
+            MonitoringViewModelFactory(
+                MqttRepository(MqttClientManager.getInstance("ws://asbombeo.ddns.net:8083")),
+                currentMqttTopic,
+                equipmentType
+            )
 
-        // 3. Conecta al broker con el tópico
-        val brokerUrl = "ws://tu_broker:8083/mqtt"  // Ajusta la URL
-        mqttManager = MqttClientManager(brokerUrl)
-        mqttManager.setCallback(this)
-        mqttManager.connect { success ->
-            if (success) {
-                // onConnectionSuccess() se llamará automáticamente vía callback
-                mqttManager.subscribe(mqttTopic)
-            } else {
-                runOnUiThread {
-                    // Actualiza la UI si falla inmediatamente
-                    binding.ivConnectionIcon.setImageResource(R.drawable.ic_cloud_off)
-                    binding.tvConnectionStatus.text = getString(R.string.desconectado)
-                    binding.connectionStatusContainer.setBackgroundColor(Color.parseColor("#FFEBEE"))
-                    Toast.makeText(this, "Error al conectar", Toast.LENGTH_SHORT).show()
+        )[MonitoringViewModel::class.java]
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    when (state) {
+                        is MonitoringUiState.DataLoaded -> {
+                            updateGauge(state.pressure ?: 2.5)
+                            mostrarEquipos(state.equipmentList)
+                        }
+                        is MonitoringUiState.ConnectionError -> {
+                            mostrarAlerta("MQTT", state.message ?: "Error")
+                        }
+                        MonitoringUiState.Connected -> {
+                            binding.ivConnectionIcon.setImageResource(R.drawable.ic_cloud_done)
+                        }
+                        MonitoringUiState.Loading -> {
+                            // Mostrar carga si es necesario
+                        }
+                    }
                 }
             }
         }
-        // Conexión de PRUEBA (Mosquitto) - Temporal
-        mqttTestHelper = MqttTestHelper(this) //quitar o comentar despues de las pruebas
-        mqttTestHelper.startTestConnection() //quitar o comentar
 
+        mqttManager = MqttClientManager.getInstance("ws://asbombeo.ddns.net:8083")
+        mqttManager.addCallback(this)
+
+        if (useTestBroker) {
+            MqttTestHelper(this).startTestConnection()
+        } else {
+            mqttManager.connect { success ->
+                if (success) mqttManager.subscribe(currentMqttTopic)
+            }
+        }
+        binding.ivConnectionIcon.setImageResource(R.drawable.ic_cloud_sync)
+        binding.tvConnectionStatus.text = getString(R.string.conectando)
+        binding.connectionStatusContainer.setBackgroundColor(Color.parseColor("#FFEBEE"))
+    }
+    override fun onResume() {
+        super.onResume()
+        mqttManager.addCallback(this) // Siempre añade el callback (evita condiciones complejas)
+        // Sincroniza el UI con el estado real:
+        if (mqttManager.isConnected()) {
+            onConnectionSuccess() // Actualiza el UI a "conectado"
+        } else {
+            onConnectionLost(Throwable("Desconectado")) // Actualiza el UI a "error"
+        }
+    }
+
+    override fun onPause() {
+        if (::mqttManager.isInitialized) {
+            mqttManager.removeCallback(this as MqttCallbackHandler) // ✅ Correcto
+        }
+        super.onPause()
     }
 
     private fun setupGauge() {
@@ -195,7 +238,6 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
         binding.equipmentContainer.addView(itemView)
     }
 
-    // En tu MonitoringActivity:
     override fun onConnectionSuccess() {
         runOnUiThread {
             binding.ivConnectionIcon.setImageResource(R.drawable.ic_cloud_done)
@@ -213,8 +255,10 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
     }
 
     override fun onDestroy() {
-        mqttTestHelper.stopTestConnection() //comentar o quitar(es para la prueba cons moquito)
-        mqttManager.disconnect()
+        mqttManager.removeCallback(this as MqttCallbackHandler)
+        if (useTestBroker) {
+            MqttTestHelper(this).stopTestConnection()
+        }
         super.onDestroy()
     }
 }

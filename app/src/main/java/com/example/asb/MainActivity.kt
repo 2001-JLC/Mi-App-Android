@@ -14,34 +14,42 @@ import com.example.asb.db.DataActivity
 import com.example.asb.faults.FaultsActivity
 import com.example.asb.monitoring.MonitoringActivity
 import com.example.asb.about.AboutActivity
+import com.example.asb.mqtt.MqttClientManager
+import com.example.asb.mqtt.MqttProductionHelper
+import com.example.asb.mqtt.MqttRepository
 import com.example.asb.network.model.ProjectResponse
 import com.example.asb.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val mainScope = CoroutineScope(Dispatchers.Main)
+    private lateinit var mqttProductionHelper: MqttProductionHelper
+    private var mqttTopic: String? = null
+    private lateinit var mqttRepository: MqttRepository
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Mostrar progreso mientras se carga
+        val mqttManager = MqttClientManager.getInstance("ws://asbombeo.ddns.net:8083/mqtt")
+        mqttRepository = MqttRepository(mqttManager)
+
+
+        mqttTopic?.let { topic ->
+            mqttProductionHelper.startProductionConnection(topic)
+        } ?: run {
+            Toast.makeText(this, "Error: Tópico MQTT no definido", Toast.LENGTH_LONG).show()
+        }
+
         binding.progressBar.visibility = View.VISIBLE
-
         mainScope.launch {
-            // Operaciones en segundo plano
-            val project = withContext(Dispatchers.IO) {
-                loadProjectData()
-            }
-
-            // Actualizar UI en el hilo principal
+            val project = withContext(Dispatchers.IO) { loadProjectData() }
             if (project != null) {
                 setupUI("", project)
                 setupButtons(project)
@@ -49,7 +57,6 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this@MainActivity, "Error: Datos del proyecto incompletos", Toast.LENGTH_SHORT).show()
                 finish()
             }
-
             setupNavigationDrawer()
             setupBackPressHandler()
             binding.progressBar.visibility = View.GONE
@@ -142,7 +149,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnMonitoring.setOnClickListener {
-            startActivity(Intent(this, MonitoringActivity::class.java).putProjectExtras())
+            val mqttTopic = "asb/telemetria/$clientId/${project.id}/operaciones/bombas/data" // Tópico centralizado aquí
+
+            Intent(this, MonitoringActivity::class.java).apply {
+                putExtra("CLIENT_ID", clientId)
+                putExtra("PROJECT_ID", project.id.toString())
+                putExtra("EQUIPMENT_TYPE", project.tipoEquipo)
+                putExtra("MQTT_TOPIC", mqttTopic) // 👈 Envía el tópico ya construido
+            }.also { startActivity(it) }
         }
 
         binding.btnFaults.setOnClickListener {
@@ -178,7 +192,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        if (isFinishing) {
+            MqttClientManager.getInstance("ws://asbombeo.ddns.net:8083/mqtt").disconnect()
+        }
         super.onDestroy()
-        mainScope.cancel() // Cancela todas las corrutinas cuando la actividad se destruye
     }
 }
