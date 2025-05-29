@@ -18,6 +18,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.lifyleScopeai
 import com.example.asb.models.DynamicEquipment
 import com.example.asb.mqtt.MqttRepository
 import com.example.asb.mqtt.MqttTestHelper
