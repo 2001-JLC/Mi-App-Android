@@ -1,59 +1,76 @@
 package com.example.asb.mqtt
 
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
+import org.eclipse.paho.client.mqttv3.*
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
-class MqttTestHelper(private val mainHandler: MqttCallbackHandler) {
+class MqttTestHelper(private val callback: MqttCallbackHandler) {
     private val testBrokerUrl = "tcp://broker.hivemq.com:1883"
     private val testTopic = "003/0004/01/02/Datos"
-    private lateinit var testMqttManager: MqttClientManager
-    private var reconnectAttempts = 0
-    private val maxReconnectAttempts = 3
+    private var mqttClient: MqttAsyncClient? = null
 
-    private val internalCallback = object : MqttCallbackHandler {
-        override fun onMessageReceived(topic: String, message: String) {
-            Log.d("MQTT_TEST", "Mensaje recibido: $topic - $message")
-            mainHandler.onMessageReceived(topic, message)
-        }
+    fun connect() {
+        try {
+            mqttClient = MqttAsyncClient(
+                testBrokerUrl,
+                "TestClient_${System.currentTimeMillis()}",
+                MemoryPersistence()
+            ).apply {
+                setCallback(object : MqttCallback {
+                    override fun connectionLost(cause: Throwable?) {
+                        Log.e("MQTT_TEST", "Conexión perdida: ${cause?.message}")
+                        callback.onConnectionLost(cause ?: Throwable("Error desconocido"))
+                    }
 
-        override fun onConnectionLost(cause: Throwable) {
-            mainHandler.onConnectionLost(cause)
-        }
+                    override fun messageArrived(topic: String, message: MqttMessage) {
+                        val payload = String(message.payload)
+                        Log.d("MQTT_TEST", "Mensaje recibido: $topic - $payload")
+                        callback.onMessageReceived(topic, payload)
+                    }
 
-        override fun onConnectionSuccess() {
-            mainHandler.onConnectionSuccess()
+                    override fun deliveryComplete(token: IMqttDeliveryToken?) {
+                        Log.d("MQTT_TEST", "Mensaje entregado al broker: ${token?.messageId}")
+                    }
+                })
+
+                val options = MqttConnectOptions().apply {
+                    isCleanSession = true
+                    isAutomaticReconnect = true
+                    connectionTimeout = 30
+                    keepAliveInterval = 60
+                }
+
+                connect(options, null, object : IMqttActionListener {
+                    override fun onSuccess(asyncActionToken: IMqttToken?) {
+                        Log.d("MQTT_TEST", "✅ Conectado a $testBrokerUrl")
+                        subscribe(testTopic)
+                        callback.onConnectionSuccess()
+                    }
+
+                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                        Log.e("MQTT_TEST", "❌ Error de conexión: ${exception?.message}")
+                        callback.onConnectionLost(exception ?: Throwable("Error genérico"))
+                    }
+                })
+            }
+        } catch (e: Exception) {
+            Log.e("MQTT_TEST", "Error en connect(): ${e.message}")
+            callback.onConnectionLost(e)
         }
     }
 
-    fun startTestConnection() {
-        testMqttManager = MqttClientManager.getInstance(testBrokerUrl).apply {
-            removeCallback(internalCallback)
-            addCallback(internalCallback)
-        }
+    private fun subscribe(topic: String) {
+        mqttClient?.subscribe(topic, 1)
+    }
 
-        if (testMqttManager.isConnected()) {
-            testMqttManager.subscribe(testTopic)
-            return
-        }
-
-        testMqttManager.connect { success ->
-            if (success) {
-                reconnectAttempts = 0
-                testMqttManager.subscribe(testTopic)
-            } else if (reconnectAttempts < maxReconnectAttempts) {
-                reconnectAttempts++
-                Handler(Looper.getMainLooper()).postDelayed({
-                    startTestConnection()
-                }, 5000)
-            } else {
-                Log.e("MQTT_TEST", "Error: Máximo de reintentos alcanzado")
+    fun disconnect() {
+        mqttClient?.disconnect()?.actionCallback = object : IMqttActionListener {
+            override fun onSuccess(asyncActionToken: IMqttToken?) {
+                Log.d("MQTT_TEST", "Desconectado correctamente")
+            }
+            override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                Log.e("MQTT_TEST", "Error al desconectar")
             }
         }
-    }
-
-    fun stopTestConnection() {
-        testMqttManager.removeCallback(internalCallback)
-        testMqttManager.disconnect()
     }
 }
