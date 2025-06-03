@@ -11,8 +11,9 @@ import android.graphics.Color
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.Toast
 import com.example.asb.models.DynamicEquipment
+import com.example.asb.mqtt.AppConfig
+import com.example.asb.mqtt.MqttProductionHelper
 import com.example.asb.mqtt.MqttTestHelper
 import com.example.asb.utils.JsonParser
 
@@ -24,6 +25,7 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
     private var ultimaPresion: Double? = null
     private lateinit var equipmentType: String
     private lateinit var mqttTopic: String
+    private lateinit var mqttProductionHelper: MqttProductionHelper
 
     private fun setupGauge() {
         binding.pressureGauge.setPressure(2.5f)
@@ -50,14 +52,18 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
         equipmentType = mqttTopic.split("/").getOrNull(2) ?: "01"
         setupGauge()
 
-        // Configurar MQTT para pruebas
-        mqttHelper = MqttTestHelper(this)
-        mqttHelper.connect()
-
         // Estado inicial de conexión
         binding.ivConnectionIcon.setImageResource(R.drawable.ic_cloud_sync)
         binding.tvConnectionStatus.text = getString(R.string.conectando)
         binding.connectionStatusContainer.setBackgroundColor(Color.parseColor("#FFEBEE"))
+
+        if (AppConfig.isTestMode) {
+            mqttHelper = MqttTestHelper(this)
+            mqttHelper.connect()
+        } else {
+            mqttProductionHelper = MqttProductionHelper(this, mqttTopic)
+            mqttProductionHelper.connect()
+        }
     }
 
     override fun onMessageReceived(topic: String, message: String) {
@@ -132,7 +138,11 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
     }
 
     override fun onDestroy() {
-        mqttHelper.disconnect()
+        if (AppConfig.isTestMode) {
+            mqttHelper.disconnect()
+        } else {
+            mqttProductionHelper.disconnect()
+        }
         super.onDestroy()
     }
 }
