@@ -1,5 +1,5 @@
 package com.example.asb.mqtt
 
 object AppConfig {
-    var isTestMode = false // false Por defecto en modo producción
+    var isTestMode = true // false Por defecto en modo producción
 }

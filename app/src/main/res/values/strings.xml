@@ -66,7 +66,7 @@
     <string name="nombre_equipo">Nombre del Equipo:</string>
     <string name="cliente">Cliente:</string>
     <string name="monitoreo">Monitoreo</string>
-    <string name="falla">Falla</string>
+    <string name="falla">Alarmas</string>
     <string name="datos">Datos</string>
     <string name="conf">Conf</string>
     <string name="bitacora">Bitácora</string>
@@ -148,4 +148,12 @@
 
     <!--activity_data.xml  -->
     <string name="seleccione_equipo">Seleccione un equipo para ver su historial</string>
+
+    <!--activityfauls.kt  -->
+    <string name="todas">Todas</string>
+    <string name="bomba_1">Bomba 1</string>
+    <string name="bomba_2">Bomba 2</string>
+    <string name="seleccione_todas">Seleccione "Todas"</string>
+    <string name="ver_grafico">Ver Gráfico</string>
+    <string name="volver">Volver</string>
 </resources>

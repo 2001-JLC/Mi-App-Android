@@ -14,6 +14,7 @@ import com.example.asb.db.DataActivity
 import com.example.asb.faults.FaultsActivity
 import com.example.asb.monitoring.MonitoringActivity
 import com.example.asb.about.AboutActivity
+import com.example.asb.mqtt.AppConfig
 import com.example.asb.network.model.ProjectResponse
 import com.example.asb.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
@@ -144,7 +145,7 @@ class MainActivity : AppCompatActivity() {
                 putExtra("WORK_ORDER", project.workOrders.firstOrNull())
             })
         }
-
+        binding.btnBitacora.visibility = if (AppConfig.isTestMode) View.GONE else View.VISIBLE
         binding.btnBitacora.setOnClickListener {
             startActivity(Intent(this, BitacoraActivity::class.java).apply {
                 putExtra("WORK_ORDER", project.workOrders.firstOrNull())

@@ -46,4 +46,9 @@
     <color name="primary_text">#212121</color>
     <color name="secondary_text">#757575</color>
     <color name="light_red">#FFF5F5</color>
+
+    <!-- Color para el grafico de faults(Alarmas) -->
+    <color name="chart_red">#FF4500</color>
+    <color name="chart_blue">#1E90FF</color>
+    <color name="chart_green">#2E8B57</color>
 </resources>

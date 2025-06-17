@@ -59,8 +59,17 @@ class MqttTestHelper(private val callback: MqttCallbackHandler) {
         }
     }
 
-    private fun subscribe(topic: String) {
+    fun subscribe(topic: String) {
         mqttClient?.subscribe(topic, 1)
+    }
+
+    fun publish(topic: String, message: String) { //Para la parte de alarmas
+        try {
+            mqttClient?.publish(topic, MqttMessage(message.toByteArray()))
+            Log.d("MQTT_TEST", "📤 Mensaje publicado en [$topic]")
+        } catch (e: Exception) {
+            Log.e("MQTT_TEST", "❌ Error al publicar: ${e.message}")
+        }
     }
 
     fun disconnect() {
