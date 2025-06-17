@@ -14,9 +14,7 @@ import com.example.asb.db.DataActivity
 import com.example.asb.faults.FaultsActivity
 import com.example.asb.monitoring.MonitoringActivity
 import com.example.asb.about.AboutActivity
-import com.example.asb.mqtt.MqttClientManager
-import com.example.asb.mqtt.MqttProductionHelper
-import com.example.asb.mqtt.MqttRepository
+import com.example.asb.mqtt.AppConfig
 import com.example.asb.network.model.ProjectResponse
 import com.example.asb.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
@@ -27,25 +25,11 @@ import kotlinx.coroutines.withContext
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val mainScope = CoroutineScope(Dispatchers.Main)
-    private lateinit var mqttProductionHelper: MqttProductionHelper
-    private var mqttTopic: String? = null
-    private lateinit var mqttRepository: MqttRepository
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        val mqttManager = MqttClientManager.getInstance("ws://asbombeo.ddns.net:8083/mqtt")
-        mqttRepository = MqttRepository(mqttManager)
-
-
-        mqttTopic?.let { topic ->
-            mqttProductionHelper.startProductionConnection(topic)
-        } ?: run {
-            Toast.makeText(this, "Error: Tópico MQTT no definido", Toast.LENGTH_LONG).show()
-        }
 
         binding.progressBar.visibility = View.VISIBLE
         mainScope.launch {
@@ -149,14 +133,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnMonitoring.setOnClickListener {
-            val mqttTopic = "asb/telemetria/$clientId/${project.id}/operaciones/bombas/data" // Tópico centralizado aquí
-
-            Intent(this, MonitoringActivity::class.java).apply {
-                putExtra("CLIENT_ID", clientId)
-                putExtra("PROJECT_ID", project.id.toString())
-                putExtra("EQUIPMENT_TYPE", project.tipoEquipo)
-                putExtra("MQTT_TOPIC", mqttTopic) // 👈 Envía el tópico ya construido
-            }.also { startActivity(it) }
+           startActivity(Intent(this, MonitoringActivity::class.java).putProjectExtras())
         }
 
         binding.btnFaults.setOnClickListener {
@@ -168,7 +145,7 @@ class MainActivity : AppCompatActivity() {
                 putExtra("WORK_ORDER", project.workOrders.firstOrNull())
             })
         }
-
+        binding.btnBitacora.visibility = if (AppConfig.isTestMode) View.GONE else View.VISIBLE
         binding.btnBitacora.setOnClickListener {
             startActivity(Intent(this, BitacoraActivity::class.java).apply {
                 putExtra("WORK_ORDER", project.workOrders.firstOrNull())
@@ -189,12 +166,5 @@ class MainActivity : AppCompatActivity() {
             )
             finish()
         }
-    }
-
-    override fun onDestroy() {
-        if (isFinishing) {
-            MqttClientManager.getInstance("ws://asbombeo.ddns.net:8083/mqtt").disconnect()
-        }
-        super.onDestroy()
     }
 }

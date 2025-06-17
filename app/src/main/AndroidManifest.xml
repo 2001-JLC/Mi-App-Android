@@ -55,7 +55,8 @@
 
         <activity android:name=".db.DataActivity" android:exported="false" />
         <activity android:name=".test.EquipmentHistoryActivity" android:exported="false" />
-
+        <activity android:name=".faults.FaultsActivity" android:exported="false"/>
+        <activity android:name=".faults.chart.ChartActivity" android:exported="false" />
     </application>
 
 </manifest>

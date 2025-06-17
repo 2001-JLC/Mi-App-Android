@@ -46,7 +46,7 @@ dependencies {
 
     implementation(libs.mpandroidchart)
     implementation(libs.mqtt.client)
-    //implementation(libs.mqtt.android.service)
+    implementation(libs.mqtt.android.service)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
     implementation(libs.logging.interceptor)
