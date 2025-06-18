@@ -29,6 +29,7 @@ biometricKtx = "1.2.0-alpha05"
 roomCommonJvm = "2.7.1"
 roomRuntimeAndroid = "2.7.1" # Versión de la librería
 room = "2.7.1"
+uiDesktop = "1.7.0"
 
 
 [libraries]
@@ -68,6 +69,7 @@ androidx-room-common-jvm = { group = "androidx.room", name = "room-common-jvm", 
 androidx-room-runtime-android = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-ui-desktop = { group = "androidx.compose.ui", name = "ui-desktop", version.ref = "uiDesktop" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

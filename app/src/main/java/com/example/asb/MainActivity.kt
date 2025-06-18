@@ -1,6 +1,7 @@
 package com.example.asb
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -15,16 +16,25 @@ import com.example.asb.faults.FaultsActivity
 import com.example.asb.monitoring.MonitoringActivity
 import com.example.asb.about.AboutActivity
 import com.example.asb.mqtt.AppConfig
+import com.example.asb.mqtt.MqttForegroundService
 import com.example.asb.network.model.ProjectResponse
 import com.example.asb.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import android.Manifest
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val mainScope = CoroutineScope(Dispatchers.Main)
+
+    companion object { //Para notificacioones
+        private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1001
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +54,26 @@ class MainActivity : AppCompatActivity() {
             setupNavigationDrawer()
             setupBackPressHandler()
             binding.progressBar.visibility = View.GONE
+        }
+        //inicia el segundo plano
+        startMqttForegroundService()
+        //inicia las notificaciones
+        checkAndRequestNotificationPermission()
+    }
+    //para las notificaciones
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permiso concedido
+                Toast.makeText(this, "Notificaciones activadas", Toast.LENGTH_SHORT).show()
+            }
+            // No necesitas manejar el caso de denegación explícitamente
         }
     }
 
@@ -121,6 +151,15 @@ class MainActivity : AppCompatActivity() {
             binding.tvWorkOrder.text = project.workOrders.firstOrNull() ?: "N/A"
         }
     }
+    //para iniciar las notificaciones
+    private fun startMqttForegroundService() {
+        val intent = Intent(this, MqttForegroundService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
 
     private fun setupButtons(project: ProjectResponse) {
         val clientId = intent.getStringExtra("CLIENT_ID") ?: "client_default"
@@ -151,6 +190,43 @@ class MainActivity : AppCompatActivity() {
                 putExtra("WORK_ORDER", project.workOrders.firstOrNull())
             })
         }
+    }
+    //permisos para Android 13+ para notificaciones
+    private fun checkAndRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // Permiso ya concedido, no hacer nada
+                }
+
+                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
+                    // Mostrar explicación (opcional)
+                    Toast.makeText(this,
+                        "Las notificaciones son necesarias para alertas de fallas",
+                        Toast.LENGTH_LONG).show()
+
+                    // Solicitar permiso después de explicar
+                    ActivityCompat.requestPermissions(
+                        this,
+                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                        NOTIFICATION_PERMISSION_REQUEST_CODE
+                    )
+                }
+
+                else -> {
+                    // Solicitar permiso directamente
+                    ActivityCompat.requestPermissions(
+                        this,
+                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                        NOTIFICATION_PERMISSION_REQUEST_CODE
+                    )
+                }
+            }
+        }
+        // Para versiones anteriores a Android 13 no se necesita permiso explícito
     }
 
     private fun logout() {
