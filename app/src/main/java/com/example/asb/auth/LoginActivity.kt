@@ -11,25 +11,26 @@ import com.example.asb.network.model.LoginRequest
 import com.example.asb.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okio.IOException
 
 class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Verificar sesión expirada incluso si no viene de logout
+        // Verificación de sesión expirada al iniciar la actividad
         if (SessionManager.getToken(this) != null && !SessionManager.isTokenValid(this)) {
             SessionManager.clearSession(this)
             Toast.makeText(this, "Sesión expirada", Toast.LENGTH_SHORT).show()
         }
 
-        // Si viene de un logout, limpia cualquier dato residual
+        // Limpieza de datos si viene de logout
         if (intent?.getBooleanExtra("FROM_LOGOUT", false) == true) {
             SessionManager.clearSession(this)
         }
@@ -42,19 +43,21 @@ class LoginActivity : AppCompatActivity() {
             val username = binding.etUsername.text.toString().trim()
             val password = binding.etPassword.text.toString().trim()
 
-            if (username.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Ingrese usuario y contraseña", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+            // Validación básica de campos
+            when {
+                username.isEmpty() -> binding.etUsername.error = "Ingresa tu usuario"
+                password.isEmpty() -> binding.etPassword.error = "Ingresa tu contraseña"
+                else -> attemptLogin(username, password) // Solo proceder si los campos no están vacíos
             }
-            attemptLogin(username, password)
         }
     }
 
     private fun attemptLogin(username: String, password: String) {
-        binding.progressBar.visibility = View.VISIBLE
+        binding.progressBar.visibility = View.VISIBLE // Mostrar indicador de carga
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // Realizar petición de login
                 val response = ApiClient.apiService.login(
                     LoginRequest(
                         userName = username,
@@ -63,27 +66,34 @@ class LoginActivity : AppCompatActivity() {
                 )
 
                 withContext(Dispatchers.Main) {
+                    // Manejar respuesta del servidor
                     when {
                         !response.isSuccessful -> {
-                            val errorMsg = response.errorBody()?.string() ?: "Código ${response.code()}"
-                            showToast("Error: $errorMsg")
+                            // Manejo de errores HTTP (401, 500, etc.)
+                            val errorMsg = when (response.code()) {
+                                401 -> "Usuario o contraseña incorrectos"
+                                500 -> "Error en el servidor. Intenta más tarde"
+                                else -> "Error al iniciar sesión (Código ${response.code()})"
+                            }
+                            showToast(errorMsg)
                         }
                         response.body() == null -> {
-                            showToast("Error: Respuesta vacía del servidor")
+                            // Respuesta vacía del servidor
+                            showToast("Error: No se recibieron datos del servidor")
                         }
                         response.body()?.message != "Login exitoso" -> {
+                            // Mensaje personalizado del servidor
                             showToast(response.body()?.message ?: "Credenciales incorrectas")
                         }
-                        else -> {  // <- CASO DE ÉXITO QUE FALTABA
+                        else -> {
+                            // Login exitoso - Guardar sesión y redirigir
                             response.body()?.let { loginData ->
-                                // Guardar sesión
                                 SessionManager.saveSession(
                                     context = this@LoginActivity,
                                     username = username,
                                     token = loginData.token,
                                     clientId = loginData.idCliente.toString()
                                 )
-                                // Redirigir a la siguiente pantalla
                                 startActivity(
                                     Intent(this@LoginActivity, SelectWorkOrderActivity::class.java).apply {
                                         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -92,15 +102,23 @@ class LoginActivity : AppCompatActivity() {
                                     }
                                 )
                                 finish()
-                            }?: showToast("Error: Datos de sesión inválidos") // Manejo por si loginData es null
+                            } ?: showToast("Error: No se pudo guardar la sesión")
                         }
                     }
                 }
             } catch (e: Exception) {
+                // Manejo de errores de red/excepciones
                 withContext(Dispatchers.Main) {
-                    showToast("Error de conexión: ${e.message}")
+                    showToast(
+                        when (e) {
+                            is IOException -> "Error de conexión. Verifica tu internet"
+                            is TimeoutCancellationException -> "Tiempo de espera agotado"
+                            else -> "Error inesperado: ${e.message}"
+                        }
+                    )
                 }
             } finally {
+                // Ocultar indicador de carga siempre
                 withContext(Dispatchers.Main) {
                     binding.progressBar.visibility = View.GONE
                 }
@@ -109,6 +127,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private suspend fun showToast(message: String) {
+        // Helper para mostrar toasts en el hilo principal
         withContext(Dispatchers.Main) {
             Toast.makeText(this@LoginActivity, message, Toast.LENGTH_SHORT).show()
         }

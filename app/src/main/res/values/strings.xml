@@ -19,6 +19,11 @@
     <string name="invalid_credentials">Credenciales incorrectas</string>
     <string name="empty_work_order">Ingrese la orden de trabajo</string>
 
+    <!-- SelectWorkOrderActivity.kt -->
+    <string name="error_conexion">Error de conexión. Toque para reintentar.</string>
+    <string name="no_ordenes_disponibles">No hay órdenes disponibles para este cliente.</string>
+    <string name="datos_invalidos">Datos inválidos recibidos</string>
+
     <!-- Equipment Types -->
     <string name="equipment_svv">SVV (Sistema de velocidad variable)</string>
     <string name="equipment_well">Pozo</string>
