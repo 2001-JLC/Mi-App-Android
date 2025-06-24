@@ -15,6 +15,7 @@ import com.example.asb.faults.chart.ChartActivity
 import com.example.asb.faults.chart.ChartHelper
 import com.example.asb.mqtt.MqttCallbackHandler
 import com.example.asb.mqtt.MqttTestHelper
+import com.google.gson.Gson
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -57,7 +58,7 @@ class FaultsActivity : AppCompatActivity(), MqttCallbackHandler {
         findViewById<Button>(R.id.btn_bomba1).setOnClickListener {
             if (allAlarms.isNotEmpty()) {
                 adapter.updateAlarms(allAlarms.filter {
-                    it.estructura.contains("BOMBA 1", ignoreCase = true)
+                    it.mensaje.contains("BOMBA 1", ignoreCase = true)
                 })
             }
             tvInstruccion.visibility = View.GONE
@@ -67,7 +68,7 @@ class FaultsActivity : AppCompatActivity(), MqttCallbackHandler {
         findViewById<Button>(R.id.btn_bomba2).setOnClickListener {
             if (allAlarms.isNotEmpty()) {
                 adapter.updateAlarms(allAlarms.filter {
-                    it.estructura.contains("BOMBA 2", ignoreCase = true)
+                    it.mensaje.contains("BOMBA 2", ignoreCase = true)
                 })
             }
             tvInstruccion.visibility = View.GONE
@@ -121,27 +122,24 @@ class FaultsActivity : AppCompatActivity(), MqttCallbackHandler {
             }
         }
     }
-
-    // 5. Parsear el formato "ID---REGISTRO-ESTRUCTURA-FECHA"
+    // Reemplaza el metodo parseAlarms
     private fun parseAlarms(rawData: String): List<Alarma> {
         Log.d("FAULTS", "Datos crudos: $rawData")
-        return rawData.split(", ").map { item ->
-            Log.d("FAULTS", "Item: $item")
-            val partes = item.split("---", "-")
-            Alarma(
-                id = partes[0],
-                registro = partes[1],
-                estructura = partes[2],
-                fecha = partes[3]
-            )
-        }.sortedByDescending { parseDate(it.fecha) }
+        return try {
+            val response = Gson().fromJson(rawData, AlarmasResponse::class.java)
+            response.alarmas.sortedByDescending { parseDate(it.fecha) } // Ordena por fecha (ajusta si usas timestamp)
+        } catch (e: Exception) {
+            Log.e("FAULTS", "Error al parsear JSON", e)
+            emptyList()
+        }
     }
 
     private fun parseDate(dateString: String): Long {
         return try {
-            SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss", Locale.US).parse(dateString)?.time ?: 0
+            SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'Z", Locale.US).parse(dateString)?.time ?: 0
         } catch (e: Exception) {
-            0  // En caso de error, devuelve 0 (se ordenará al final)
+            Log.e("FAULTS", "Error al parsear fecha: $dateString", e)
+            0  // En caso de error, se ordenará al final
         }
     }
 

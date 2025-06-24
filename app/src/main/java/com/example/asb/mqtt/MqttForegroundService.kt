@@ -35,6 +35,8 @@ class MqttForegroundService : Service() {
 
     // Handler para manejar reconexiones automáticas
     private val reconnectHandler = Handler(Looper.getMainLooper())
+    // 1. Tópico constante para notificaciones (según lo planeado)
+    private val notificationTopic = "asb/telemetria/client2/proyect291/alarmas/notification"
 
     override fun onCreate() {
         super.onCreate()
@@ -48,9 +50,10 @@ class MqttForegroundService : Service() {
              */
             override fun onMessageReceived(topic: String, message: String) {
                 when (topic) {
-                    "ASBOMBEO/DEMO/ALARMA/REGISTRO" -> notificationManager.setRegistro(message)
-                    "ASBOMBEO/DEMO/ALARMA/MENSAJE" -> notificationManager.setMensaje(message)
-                    "ASBOMBEO/DEMO/ALARMA/FECHA" -> notificationManager.setFecha(message)
+                    notificationTopic -> {
+                        //Procesar el json completo
+                        notificationManager.showNotificationFromJson(message)
+                    }
                 }
             }
 

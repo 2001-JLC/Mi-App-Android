@@ -5,53 +5,59 @@ import android.util.Log
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import com.google.gson.Gson
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 class ChartHelper {
+    // Nueva data class para el parseo del JSON
+    private data class JsonChartData(
+        val status: String,
+        val alarmas: List<AlarmaChart>
+    )
+
+    private data class AlarmaChart(
+        val codigo: String,
+        val mensaje: String,
+        val fecha: String
+    )
 
     fun getChartData(rawData: String): List<StackedBarEntry> {
-        val dateFormat = SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'Z", Locale.US)
-        val monthFormat = SimpleDateFormat("MMM yyyy", Locale.US)
+        return try {
+            val jsonData = Gson().fromJson(rawData, JsonChartData::class.java)
+            val monthFormat = SimpleDateFormat("MMM yyyy", Locale.US)
+            val dateFormat = SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'Z", Locale.US)
 
-        return rawData.split(", ").mapNotNull { item ->
-            try {
-                // Dividir primero por el primer "---" que separa ID del resto
-                val idSplit = item.split("---", limit = 2)
-                if (idSplit.size != 2) return@mapNotNull null
+            jsonData.alarmas.mapNotNull { alarm ->
+                try {
+                    val date = dateFormat.parse(alarm.fecha) ?: return@mapNotNull null
+                    val monthYear = monthFormat.format(date)
 
-                // Dividir el resto por el primer "-" que separa código del registro
-                val restParts = idSplit[1].split("-", limit = 3)
-                if (restParts.size != 3) return@mapNotNull null
-
-                val codigo = restParts[0]
-                val registro = restParts[1]
-                val fechaTexto = restParts[2].trim()
-
-                val date = dateFormat.parse(fechaTexto) ?: return@mapNotNull null
-                val monthYear = monthFormat.format(date)
-
-                StackedBarEntry(
-                    timeLabel = monthYear,
-                    bomba1Count = if (registro.contains("BOMBA 1")) 1 else 0,
-                    bomba2Count = if (registro.contains("BOMBA 2")) 1 else 0,
-                    sistemaCount = if (codigo.startsWith("120") || codigo.startsWith("121")) 1 else 0
-                )
-            } catch (e: Exception) {
-                Log.e("ChartHelper", "Error parsing item: $item", e)
-                null
-            }
-        }.groupBy { it.timeLabel }
-            .map { (month, entries) ->
-                StackedBarEntry(
-                    month,
-                    entries.sumOf { it.bomba1Count },
-                    entries.sumOf { it.bomba2Count },
-                    entries.sumOf { it.sistemaCount }
-                )
-            }.sortedBy {
-                SimpleDateFormat("MMM yyyy", Locale.US).parse(it.timeLabel)?.time ?: 0
-            }
+                    StackedBarEntry(
+                        timeLabel = monthYear,
+                        bomba1Count = if (alarm.mensaje.contains("BOMBA 1", ignoreCase = true)) 1 else 0,
+                        bomba2Count = if (alarm.mensaje.contains("BOMBA 2", ignoreCase = true)) 1 else 0,
+                        sistemaCount = if (alarm.codigo.startsWith("120") || alarm.codigo.startsWith("121")) 1 else 0
+                    )
+                } catch (e: Exception) {
+                    Log.e("ChartHelper", "Error parsing alarm: ${alarm.codigo}", e)
+                    null
+                }
+            }.groupBy { it.timeLabel }
+                .map { (month, entries) ->
+                    StackedBarEntry(
+                        month,
+                        entries.sumOf { it.bomba1Count },
+                        entries.sumOf { it.bomba2Count },
+                        entries.sumOf { it.sistemaCount }
+                    )
+                }.sortedBy {
+                    SimpleDateFormat("MMM yyyy", Locale.US).parse(it.timeLabel)?.time ?: 0
+                }
+        } catch (e: Exception) {
+            Log.e("ChartHelper", "Error parsing JSON", e)
+            emptyList()
+        }
     }
 
     fun setupChart(barChart: BarChart, data: List<StackedBarEntry>) {
