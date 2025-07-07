@@ -25,7 +25,7 @@ class AlarmAdapter(private var alarms: List<Alarma>) :
 
     override fun onBindViewHolder(holder: AlarmViewHolder, position: Int) {
         val alarm = alarms[position]
-        holder.tvCodigo.text = alarm.codigo
+        holder.tvCodigo.text = holder.itemView.context.getString(R.string.id_with_placeholder, alarm.idModbus)
         holder.tvMensaje.text = alarm.mensaje
         holder.tvFecha.text = alarm.fecha
     }

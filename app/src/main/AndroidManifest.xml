@@ -26,7 +26,7 @@
         tools:targetApi="31">
 
         <service
-            android:name=".mqtt.MqttForegroundService"
+            android:name=".mqtt.MqttProductionForegroundService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
@@ -61,7 +61,6 @@
             android:exported="false"/> <!-- exported=false porque es solo para uso interno -->
 
         <activity android:name=".db.DataActivity" android:exported="false" />
-        <activity android:name=".test.EquipmentHistoryActivity" android:exported="false" />
         <activity android:name=".faults.FaultsActivity" android:exported="false"/>
         <activity android:name=".faults.chart.ChartActivity" android:exported="false" />
     </application>

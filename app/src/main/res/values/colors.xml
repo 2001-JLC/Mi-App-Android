@@ -51,4 +51,9 @@
     <color name="chart_red">#FF4500</color>
     <color name="chart_blue">#1E90FF</color>
     <color name="chart_green">#2E8B57</color>
+
+        <!-- Colores nuevos requeridos -->
+    <color name="azul_oscuro">#FF1565C0</color>
+    <color name="rojo_error">#FFD32F2F</color>
+
 </resources>

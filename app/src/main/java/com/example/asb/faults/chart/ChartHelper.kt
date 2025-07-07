@@ -3,32 +3,48 @@ package com.example.asb.faults.chart
 import android.graphics.Color
 import android.util.Log
 import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.components.Legend
+import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.*
+import com.github.mikephil.charting.formatter.DefaultValueFormatter
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.TimeZone
 
 class ChartHelper {
-    // Nueva data class para el parseo del JSON
+    // Data classes actualizadas para el nuevo JSON
     private data class JsonChartData(
-        val status: String,
-        val alarmas: List<AlarmaChart>
+        val cliente: String,
+        val equipo: String,
+        val data: AlarmasData
+    )
+
+    private data class AlarmasData(
+        val alarmas: List<AlarmaChart>,
+        val total: Int,
+        @SerializedName("last_update")
+        val lastUpdate: String
     )
 
     private data class AlarmaChart(
-        val codigo: String,
+        @SerializedName("id_modbus")
+        val idModbus: Int,
         val mensaje: String,
-        val fecha: String
+        val fecha: String  // Formato ISO 8601: "2025-07-02T18:57:08.351Z"
     )
 
     fun getChartData(rawData: String): List<StackedBarEntry> {
         return try {
             val jsonData = Gson().fromJson(rawData, JsonChartData::class.java)
             val monthFormat = SimpleDateFormat("MMM yyyy", Locale.US)
-            val dateFormat = SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'Z", Locale.US)
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
 
-            jsonData.alarmas.mapNotNull { alarm ->
+            jsonData.data.alarmas.mapNotNull { alarm ->
                 try {
                     val date = dateFormat.parse(alarm.fecha) ?: return@mapNotNull null
                     val monthYear = monthFormat.format(date)
@@ -37,10 +53,10 @@ class ChartHelper {
                         timeLabel = monthYear,
                         bomba1Count = if (alarm.mensaje.contains("BOMBA 1", ignoreCase = true)) 1 else 0,
                         bomba2Count = if (alarm.mensaje.contains("BOMBA 2", ignoreCase = true)) 1 else 0,
-                        sistemaCount = if (alarm.codigo.startsWith("120") || alarm.codigo.startsWith("121")) 1 else 0
+                        sistemaCount = if (alarm.idModbus in 120..129) 1 else 0 // Ejemplo: IDs 120-129 son del sistema
                     )
                 } catch (e: Exception) {
-                    Log.e("ChartHelper", "Error parsing alarm: ${alarm.codigo}", e)
+                    Log.e("ChartHelper", "Error parsing alarm: ${alarm.idModbus}", e)
                     null
                 }
             }.groupBy { it.timeLabel }
@@ -70,35 +86,65 @@ class ChartHelper {
         }
 
         val dataSet = BarDataSet(entries, "").apply {
-            colors = listOf(Color.RED, Color.BLUE, Color.GREEN)
+            colors = listOf(
+                Color.parseColor("#FF5722"),  // Naranja
+                Color.parseColor("#2196F3"),  // Azul
+                Color.parseColor("#4CAF50")   // Verde
+            )
             stackLabels = arrayOf("Bomba 1", "Bomba 2", "Sistema")
+            valueTextSize = 10f
+            valueTextColor = Color.WHITE
+        }
+
+        // Corrección clave: Usar barChart.data en lugar de solo 'data'
+        barChart.data = BarData(dataSet).apply {
+            barWidth = 0.6f
+            setValueFormatter(DefaultValueFormatter(0))
         }
 
         barChart.apply {
-            this.data = BarData(dataSet)
+            // Configuración de ejes
             xAxis.apply {
                 valueFormatter = IndexAxisValueFormatter(data.map { it.timeLabel })
-                granularity = 1f // Evita etiquetas duplicadas
-                labelCount = data.size // Muestra todas las etiquetas
-                labelRotationAngle = 45f // Rotación para mejor legibilidad
-                setAvoidFirstLastClipping(true)  // Evita que se corten las etiquetas
-                textColor = Color.WHITE  // Color definido
-                textSize = 10f
+                granularity = 1f
+                labelRotationAngle = 45f
+                textSize = 11f
+                textColor = Color.WHITE
+                position = XAxis.XAxisPosition.BOTTOM
+                setDrawGridLines(false)
+                yOffset = 10f
+                // Añade estas líneas para hacer visible la línea del eje X:
+                setDrawAxisLine(true)  // Habilita la línea del eje
+                axisLineColor = Color.WHITE  // Color de la línea (ajusta según tu tema)
+                axisLineWidth = 1.5f  // Grosor de la línea
             }
-            // Configurar el Eje Y
-            axisLeft.apply {
-                granularity = 1f  // Muestra solo valores enteros
-                textColor = Color.WHITE //color de los numeros
-            }
-            axisRight.isEnabled = false  // Deshabilita el eje derecho
 
-            // Configuración de interactividad
-            setPinchZoom(true) // Zoom con gestos
-            isDragEnabled = true // Scroll horizontal
-            setVisibleXRangeMaximum(6f) // Muestra 6 meses a la vez
-            description.isEnabled = false // Opcional: oculta la descripción
-            isDragEnabled = true  // Permite desplazamiento horizontal
+            axisLeft.apply {
+                textSize = 11f
+                textColor = Color.WHITE
+                granularity = 1f
+                axisMinimum = 0f
+                gridColor = Color.parseColor("#333333")
+            }
+
+            // Configuración de leyenda
+            legend.apply {
+                textSize = 12f
+                textColor = Color.WHITE
+                verticalAlignment = Legend.LegendVerticalAlignment.BOTTOM
+                horizontalAlignment = Legend.LegendHorizontalAlignment.CENTER
+                orientation = Legend.LegendOrientation.HORIZONTAL
+                yOffset = 25f
+                xOffset = 10f
+            }
+
+            setExtraOffsets(15f, 15f, 15f, 40f)
+            setTouchEnabled(true)
+            setPinchZoom(true)
             setScaleEnabled(true)
+            setVisibleXRangeMaximum(6f)
+            description.isEnabled = false
+            animateY(1000)
             invalidate()
         }
     }

@@ -112,7 +112,7 @@
     <string name="website_desc">Sitio web de la empresa</string>
     <string name="phone_text">+52 734 108 9680</string>
     <string name="phone_desc">Número de teléfono</string>
-    <string name="email_text">contacto@asbombeo.com</string>
+    <string name="email_text">ventas@asbombeo.com</string>
     <string name="email_desc">Correo electrónico</string>
     <string name="version_1_0_0">Versión 1.0.0</string>
     
@@ -124,7 +124,7 @@
     <string name="contacto">Contacto</string>
     <string name="email_icon">Icono de email</string>
     <string name="correo_electronico">Correo electrónico</string>
-    <string name="company_email">contacto@asbombeo.com</string>
+    <string name="company_email">ventas@asbombeo.com</string>
     <string name="phone_icon">Icono de teléfono</string>
     <string name="telefono">Teléfono</string>
     <string name="company_phone">+52 734 108 9680</string>
@@ -135,6 +135,8 @@
         ASBombeo es una empresa especializada en sistemas de bombeo y
         control de agua, ofreciendo soluciones innovadoras y tecnología
         de punta para el manejo eficiente de recursos hídricos.</string>
+    <string name="ingenier_a_innovaci_n_y_tecnolog_a_n_al_alcance_de_todos">Ingeniería, Innovación y Tecnología\n¡¡¡Al Alcance De Todos!!!</string>
+
 
     <!-- order .xml  -->
     <string name="seleccione_su_orden_de_trabajo">Seleccione su orden de trabajo</string>
@@ -150,15 +152,30 @@
     <string name="voltage_high">Voltaje alto</string>
     <string name="pressure_low">Presión baja</string>
     <string name="pressure_high">Presión alta</string>
-
+    <!--AlarmAdapter.kt  -->
+    <string name="id_with_placeholder">ID: %d</string>
     <!--activity_data.xml  -->
     <string name="seleccione_equipo">Seleccione un equipo para ver su historial</string>
 
     <!--activityfauls.kt  -->
-    <string name="todas">Todas</string>
     <string name="bomba_1">Bomba 1</string>
     <string name="bomba_2">Bomba 2</string>
-    <string name="seleccione_todas">Seleccione "Todas"</string>
+    <string name="filtre_por_bomba">Presiona \"Bomba 1\" o \"Bomba 2\" para más detalles</string>
     <string name="ver_grafico">Ver Gráfico</string>
     <string name="volver">Volver</string>
+
+    <!--Activity_data.xml  -->
+    <string name="equipo_1">EQUIPO 1</string>
+    <string name="equipo_2">EQUIPO 2</string>
+    <string name="resumen_datos">RESUMEN DE DATOS</string>
+    <string name="ultimo_registro">Último registro:</string>
+    <string name="voltaje">Voltaje:</string>
+    <string name="corriente">Corriente:</string>
+    <string name="historial_registros">HISTORIAL DE REGISTROS</string>
+    <!--dataActivity.kt  -->
+    <string name="error_connection">Error de conexión: %s</string>
+    <string name="voltage_format">%.1f V</string>
+    <string name="current_format">%.1f A</string>
+    <string name="no_data">No hay datos disponibles</string>
+    <string name="data_error">Error mostrando datos</string>
 </resources>

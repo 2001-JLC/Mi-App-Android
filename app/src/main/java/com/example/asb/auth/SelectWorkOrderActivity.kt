@@ -12,6 +12,7 @@ import com.example.asb.R
 import com.example.asb.databinding.ActivitySelectWorkOrderBinding
 import com.example.asb.network.ApiClient
 import com.example.asb.network.WorkOrder
+import com.example.asb.topic.MqttTopicManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -31,11 +32,6 @@ class SelectWorkOrderActivity : AppCompatActivity() {
     private var retryCount = 0
     // Máximo de reintentos
     private val maxRetries = 3
-
-    companion object {
-        const val BASE_TOPIC = "asb/telemetria"
-        const val TOPIC_SUFFIX = "operaciones/bombas/data"
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,19 +75,15 @@ class SelectWorkOrderActivity : AppCompatActivity() {
                     return@setOnClickListener
                 }
 
-                // Obtén el ID del cliente del intent
                 val clientId = intent.getStringExtra("ID_CLIENTE") ?: "client_default"
-
-                // Genera el tópico dinámico
-                val mqttTopic = "$BASE_TOPIC/$clientId/${selected.id}/$TOPIC_SUFFIX"
+                val mqttTopic = MqttTopicManager.getOperationsTopic(clientId, selected.id.toString())
                 Log.d("MQTT_TOPIC", "Tópico generado: $mqttTopic")
 
-                // Inicia MainActivity con todos los datos necesarios
                 startActivity(Intent(this, MainActivity::class.java).apply {
                     putExtra("WORK_ORDER", selected.id.toString())
                     putExtra("PROJECT_NAME", selected.name)
                     putExtra("CLIENT_ID", clientId)
-                    putExtra("MQTT_TOPIC", mqttTopic)  // envía el tópico ya generado
+                    putExtra("MQTT_TOPIC", mqttTopic)
                 })
             }
         }

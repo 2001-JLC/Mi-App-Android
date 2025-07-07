@@ -6,8 +6,8 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 class MqttTestHelper(private val callback: MqttCallbackHandler) {
     private val testBrokerUrl = "tcp://broker.hivemq.com:1883"
-    private val testTopic = "003/0004/01/02/Datos"
     private var mqttClient: MqttAsyncClient? = null
+    private var subscribedTopics = mutableSetOf<String>()
 
     fun connect() {
         try {
@@ -43,7 +43,6 @@ class MqttTestHelper(private val callback: MqttCallbackHandler) {
                 connect(options, null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
                         Log.d("MQTT_TEST", "✅ Conectado a $testBrokerUrl")
-                        subscribe(testTopic)
                         callback.onConnectionSuccess()
                     }
 
@@ -60,9 +59,54 @@ class MqttTestHelper(private val callback: MqttCallbackHandler) {
     }
 
     fun subscribe(topic: String) {
-        mqttClient?.subscribe(topic, 1)
+        Log.d("MQTT_DEBUG", "=== Intentando suscribir a [$topic] ===")
+        Log.d("MQTT_DEBUG", "Estado conexión: ${isConnected()}")
+        if (!subscribedTopics.contains(topic)) {
+            Log.d("MQTT_DEBUG", "Intentando suscribir a $topic. Estado conexión: ${isConnected()}")
+            mqttClient?.subscribe(topic, 1)?.actionCallback = object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    Log.d("MQTT_DEBUG", "🔔 Suscrito EXITOSAMENTE a $topic")
+                }
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                    Log.e("MQTT_DEBUG", "❌ Error al suscribir a $topic: ${exception?.message}")
+                }
+            }
+            subscribedTopics.add(topic)
+        }
     }
 
+    fun unsubscribe(topic: String) {
+        if (subscribedTopics.contains(topic)) {
+            try {
+                mqttClient?.unsubscribe(topic)?.actionCallback = object : IMqttActionListener {
+                    override fun onSuccess(asyncActionToken: IMqttToken?) {
+                        Log.d("MQTT_DEBUG", "✅ Desuscripción exitosa de $topic")
+                    }
+                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                        Log.e("MQTT_DEBUG", "❌ Error al desuscribir de $topic: ${exception?.message}")
+                    }
+                }
+                subscribedTopics.remove(topic)
+            } catch (e: Exception) {
+                Log.e("MQTT_DEBUG", "💥 Excepción en unsubscribe(): ${e.message}")
+            }
+        }
+    }
+
+    fun disconnect() {
+        try {
+            mqttClient?.disconnect()?.actionCallback = object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    Log.d("MQTT_DEBUG", "🔌 Desconexión exitosa")
+                }
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                    Log.e("MQTT_DEBUG", "❌ Error al desconectar: ${exception?.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MQTT_DEBUG", "💥 Excepción en disconnect(): ${e.message}")
+        }
+    }
     fun publish(topic: String, message: String) { //Para la parte de alarmas
         try {
             mqttClient?.publish(topic, MqttMessage(message.toByteArray()))
@@ -71,15 +115,7 @@ class MqttTestHelper(private val callback: MqttCallbackHandler) {
             Log.e("MQTT_TEST", "❌ Error al publicar: ${e.message}")
         }
     }
-
-    fun disconnect() {
-        mqttClient?.disconnect()?.actionCallback = object : IMqttActionListener {
-            override fun onSuccess(asyncActionToken: IMqttToken?) {
-                Log.d("MQTT_TEST", "Desconectado correctamente")
-            }
-            override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                Log.e("MQTT_TEST", "Error al desconectar")
-            }
-        }
+    private fun isConnected(): Boolean {
+        return mqttClient?.isConnected ?: false
     }
 }

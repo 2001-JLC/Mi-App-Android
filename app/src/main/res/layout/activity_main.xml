@@ -165,14 +165,6 @@
                 android:text="@string/datos"
                 app:icon="@drawable/data"
                 app:iconGravity="top"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnBitacora"
-                style="@style/BottomMenuButton"
-                android:drawableTop="@drawable/bitacora"
-                android:text="@string/bitacora"
-                app:icon="@drawable/bitacora"
-                app:iconGravity="top"/>
         </LinearLayout>
 
         <!-- ProgressBar superpuesto sobre el contenido -->
