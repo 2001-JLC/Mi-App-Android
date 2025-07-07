@@ -22,7 +22,7 @@ class PressureGaugeView @JvmOverloads constructor(
 
     // Presión actual y límites
     private var currentPressure = 2.5f
-    private val minPressure = 1f
+    private val minPressure = 0f
     private val maxPressure = 4f
     private val minOperatingPressure = 2.4f
     private val maxOperatingPressure = 3.2f

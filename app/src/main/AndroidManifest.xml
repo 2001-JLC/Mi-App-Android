@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> <!-- Para Android 13+ -->
 
     <application
         android:allowBackup="true"
@@ -23,6 +24,12 @@
         android:usesCleartextTraffic="true"
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="31">
+
+        <service
+            android:name=".mqtt.MqttProductionForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <activity
             android:name=".auth.LoginActivity"
@@ -54,7 +61,6 @@
             android:exported="false"/> <!-- exported=false porque es solo para uso interno -->
 
         <activity android:name=".db.DataActivity" android:exported="false" />
-        <activity android:name=".test.EquipmentHistoryActivity" android:exported="false" />
         <activity android:name=".faults.FaultsActivity" android:exported="false"/>
         <activity android:name=".faults.chart.ChartActivity" android:exported="false" />
     </application>

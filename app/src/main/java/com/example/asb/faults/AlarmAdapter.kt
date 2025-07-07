@@ -12,8 +12,8 @@ class AlarmAdapter(private var alarms: List<Alarma>) :
     RecyclerView.Adapter<AlarmAdapter.AlarmViewHolder>() {
 
     class AlarmViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val tvRegistro: TextView = itemView.findViewById(R.id.tv_registro)
-        val tvEstructura: TextView = itemView.findViewById(R.id.tv_estructura)
+        val tvCodigo: TextView = itemView.findViewById(R.id.tv_registro)
+        val tvMensaje: TextView = itemView.findViewById(R.id.tv_estructura)
         val tvFecha: TextView = itemView.findViewById(R.id.tv_fecha)
     }
 
@@ -25,8 +25,8 @@ class AlarmAdapter(private var alarms: List<Alarma>) :
 
     override fun onBindViewHolder(holder: AlarmViewHolder, position: Int) {
         val alarm = alarms[position]
-        holder.tvRegistro.text = alarm.registro
-        holder.tvEstructura.text = alarm.estructura
+        holder.tvCodigo.text = holder.itemView.context.getString(R.string.id_with_placeholder, alarm.idModbus)
+        holder.tvMensaje.text = alarm.mensaje
         holder.tvFecha.text = alarm.fecha
     }
 

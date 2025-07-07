@@ -14,27 +14,47 @@ import com.example.asb.R
 import com.example.asb.faults.chart.ChartActivity
 import com.example.asb.faults.chart.ChartHelper
 import com.example.asb.mqtt.MqttCallbackHandler
-import com.example.asb.mqtt.MqttTestHelper
+import com.example.asb.mqtt.MqttProductionHelper
+import com.example.asb.topic.MqttTopicManager
+import com.google.gson.Gson
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 class FaultsActivity : AppCompatActivity(), MqttCallbackHandler {
-    private lateinit var mqttHelper: MqttTestHelper
+    private lateinit var mqttProductionHelper: MqttProductionHelper
     private lateinit var adapter: AlarmAdapter
     private var allAlarms: List<Alarma> = emptyList()
     private lateinit var chartHelper: ChartHelper
+    private lateinit var mqttTopicRequest: String
+    private lateinit var mqttTopicResponse: String
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_faults)
 
+        // 1. Obtener parámetros dinámicos
+        val clientId = intent.getStringExtra("CLIENT_ID") ?: "client_default"
+        val projectId = intent.getStringExtra("WORK_ORDER") ?: "project_default"
+
+        // 2. Generar tópicos usando MqttTopicManager
+        mqttTopicRequest = MqttTopicManager.getAlarmsRequestTopic(clientId, projectId)
+        mqttTopicResponse = MqttTopicManager.getAlarmsResponseTopic(clientId, projectId)
+
+        Log.d("FAULTS", "Tópico Request: $mqttTopicRequest")
+        Log.d("FAULTS", "Tópico Response: $mqttTopicResponse")
+
+        // 3. Configurar MQTT de producción
+        mqttProductionHelper = MqttProductionHelper(this).apply { connect() }
+
         //inicializar chart
         chartHelper = ChartHelper()
 
         // En onCreate():
-        findViewById<Button>(R.id.btn_bomba1).isEnabled = false
-        findViewById<Button>(R.id.btn_bomba2).isEnabled = false
+        findViewById<Button>(R.id.btn_bomba1).isEnabled = true
+        findViewById<Button>(R.id.btn_bomba2).isEnabled = true
         findViewById<Button>(R.id.btn_show_chart).visibility = View.GONE
 
         val rvAlarms = findViewById<RecyclerView>(R.id.rv_alarms)
@@ -42,49 +62,36 @@ class FaultsActivity : AppCompatActivity(), MqttCallbackHandler {
         adapter = AlarmAdapter(emptyList())
         rvAlarms.adapter = adapter
 
-        // MQTT
-        mqttHelper = MqttTestHelper(this).apply { connect() }
-
-        val tvInstruccion = findViewById<TextView>(R.id.tv_instruccion)
-
-        // Botón "Todas" (unificado)
-        findViewById<Button>(R.id.btn_all).setOnClickListener {
-            requestAlarms()
-            tvInstruccion.visibility = View.GONE
-        }
-
         // Botón "Bomba 1"
         findViewById<Button>(R.id.btn_bomba1).setOnClickListener {
             if (allAlarms.isNotEmpty()) {
-                adapter.updateAlarms(allAlarms.filter {
-                    it.estructura.contains("BOMBA 1", ignoreCase = true)
-                })
+                adapter.updateAlarms(allAlarms.filter { it.mensaje.contains("BOMBA 1", ignoreCase = true) })
+                findViewById<TextView>(R.id.tv_instruccion).visibility = View.GONE // <- Ocultar instrucción al filtrar
             }
-            tvInstruccion.visibility = View.GONE
         }
 
         // Botón "Bomba 2"
         findViewById<Button>(R.id.btn_bomba2).setOnClickListener {
             if (allAlarms.isNotEmpty()) {
-                adapter.updateAlarms(allAlarms.filter {
-                    it.estructura.contains("BOMBA 2", ignoreCase = true)
-                })
+                adapter.updateAlarms(allAlarms.filter { it.mensaje.contains("BOMBA 2", ignoreCase = true) })
+                findViewById<TextView>(R.id.tv_instruccion).visibility = View.GONE // <- Ocultar instrucción al filtrar
             }
-            tvInstruccion.visibility = View.GONE
         }
     }
 
     // 3. Publicar petición al presionar el botón
     private fun requestAlarms() {
-        mqttHelper.publish(
-            topic = "ASBOMBEO/DEMO/ALARMA/PETICION",
-            message = "get_alarms" // Mensaje puede ser cualquiera
+        mqttProductionHelper.publish(
+            topic = mqttTopicRequest, // Usar tópico dinámico
+            message = "get_alarms"
         )
     }
 
     // 4. Manejar respuesta de Node-Red
     override fun onMessageReceived(topic: String, message: String) {
-        if (topic == "ASBOMBEO/DEMO/ALARMA/ENVIO") {
+        Log.d("FAULTS", "Mensaje recibido en tópico: $topic")
+        if (topic == mqttTopicResponse) {
+            Log.d("FAULTS", "Contenido del mensaje: $message")
             runOnUiThread {
                 allAlarms = parseAlarms(message)
                 adapter.updateAlarms(allAlarms)
@@ -96,52 +103,70 @@ class FaultsActivity : AppCompatActivity(), MqttCallbackHandler {
                 // 2. Mostrar y configurar botón del gráfico
                 // Configurar botón del gráfico
                 findViewById<Button>(R.id.btn_show_chart).apply {
-                    visibility = View.VISIBLE
-                    isEnabled = true  // Asegurar que esté habilitado
+                    // Mostrar el botón solo si hay alarmas
+                    visibility = if (allAlarms.isNotEmpty()) View.VISIBLE else View.GONE
+                    isEnabled = allAlarms.isNotEmpty()
+
                     setOnClickListener {
-                        Log.d("FaultsActivity", "Botón gráfico clickeado")
                         if (allAlarms.isNotEmpty()) {
-                            val intent =
-                                Intent(this@FaultsActivity, ChartActivity::class.java).apply {
-                                    putExtra(
-                                        "chartData",
-                                        ArrayList(chartHelper.getChartData(message))
+                            try {
+                                // Preparamos los datos para el gráfico
+                                val chartJson = Gson().toJson(
+                                    AlarmasResponse(
+                                        cliente = "client2",  // Puedes obtener esto de tus extras
+                                        equipo = "Svv",
+                                        data = AlarmasData(
+                                            alarmas = allAlarms,
+                                            total = allAlarms.size,
+                                            lastUpdate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+                                                .format(Date())
+                                        )
                                     )
+                                )
+
+                                Log.d("CHART_DATA", "JSON para gráfico: $chartJson")
+
+                                val chartData = chartHelper.getChartData(chartJson)
+                                Log.d("CHART_DATA", "Datos procesados: ${chartData.size} elementos")
+
+                                val intent = Intent(this@FaultsActivity, ChartActivity::class.java).apply {
+                                    putExtra("chartData", ArrayList(chartData))
                                 }
-                            startActivity(intent)
-                        } else {
-                            Toast.makeText(
-                                this@FaultsActivity,
-                                "No hay datos para graficar",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                                startActivity(intent)
+                            } catch (e: Exception) {
+                                Log.e("CHART_ERROR", "Error al preparar gráfico", e)
+                                Toast.makeText(
+                                    this@FaultsActivity,
+                                    "Error al generar gráfico",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
                     }
                 }
             }
         }
     }
-
-    // 5. Parsear el formato "ID---REGISTRO-ESTRUCTURA-FECHA"
+    // Reemplaza el metodo parseAlarms
     private fun parseAlarms(rawData: String): List<Alarma> {
-        Log.d("FAULTS", "Datos crudos: $rawData")
-        return rawData.split(", ").map { item ->
-            Log.d("FAULTS", "Item: $item")
-            val partes = item.split("---", "-")
-            Alarma(
-                id = partes[0],
-                registro = partes[1],
-                estructura = partes[2],
-                fecha = partes[3]
-            )
-        }.sortedByDescending { parseDate(it.fecha) }
+        Log.d("FAULTS", "JSON recibido: $rawData")
+        return try {
+            val response = Gson().fromJson(rawData, AlarmasResponse::class.java)
+            response.data.alarmas.sortedByDescending { parseDate(it.fecha) } // Ordena por fecha (ajusta si usas timestamp)
+        } catch (e: Exception) {
+            Log.e("FAULTS", "Error al parsear JSON", e)
+            emptyList()
+        }
     }
 
     private fun parseDate(dateString: String): Long {
         return try {
-            SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss", Locale.US).parse(dateString)?.time ?: 0
-        } catch (e: Exception) {
-            0  // En caso de error, devuelve 0 (se ordenará al final)
+// Formato ISO 8601 con timezone (ej: "2025-07-02T18:57:08.351Z")
+            val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            format.timeZone = TimeZone.getTimeZone("UTC") // Asegura que interprete la 'Z' como UTC
+            format.parse(dateString)?.time ?: 0        } catch (e: Exception) {
+            Log.e("FAULTS", "Error al parsear fecha: $dateString", e)
+            0  // En caso de error, se ordenará al final
         }
     }
 
@@ -151,11 +176,13 @@ class FaultsActivity : AppCompatActivity(), MqttCallbackHandler {
 
     override fun onConnectionSuccess() {
         Log.d("FAULTS", "Conectado a MQTT")
-        mqttHelper.subscribe("ASBOMBEO/DEMO/ALARMA/ENVIO")
+        mqttProductionHelper.subscribe(mqttTopicResponse)
+        requestAlarms()
     }
 
     override fun onDestroy() {
-        mqttHelper.disconnect()
+        mqttProductionHelper.unsubscribe(mqttTopicResponse)
+        mqttProductionHelper.disconnect()
         super.onDestroy()
     }
 }

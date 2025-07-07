@@ -12,10 +12,10 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 class MqttProductionHelper(
     private val callback: MqttCallbackHandler,
-    private val topic: String
 ) {
     private val brokerUrl = "ws://asbombeo.ddns.net:8083/mqtt"
     private var mqttClient: MqttAsyncClient? = null
+    private var subscribedTopics = mutableSetOf<String>()
 
     fun connect() {
         try {
@@ -48,7 +48,6 @@ class MqttProductionHelper(
                 connect(options, null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
                         Log.d("MQTT_PROD", "✅ Conectado exitosamente a $brokerUrl")
-                        subscribe(topic)
                         callback.onConnectionSuccess()
                     }
 
@@ -63,11 +62,81 @@ class MqttProductionHelper(
         }
     }
 
-    private fun subscribe(topic: String) {
-        mqttClient?.subscribe(topic, 1)
+    fun subscribe(topic: String, callback: IMqttActionListener? = null) {
+        Log.d("MQTT_DEBUG", "=== Intentando suscribir a [$topic] ===")
+        if (!isConnected()) {  // <-- AQUÍ USAS EL MÉTODO
+            callback?.onFailure(null, Exception("No conectado al broker"))
+            return
+        }
+
+        if (!subscribedTopics.contains(topic)) {
+            try {
+                val token = mqttClient?.subscribe(topic, 1)
+                token?.actionCallback = callback ?: object : IMqttActionListener {
+                    override fun onSuccess(asyncActionToken: IMqttToken?) {
+                        Log.d("MQTT_DEBUG", "🔔 Suscrito EXITOSAMENTE a $topic")
+                        subscribedTopics.add(topic)
+                    }
+                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                        Log.e("MQTT_DEBUG", "❌ Error al suscribir a $topic: ${exception?.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MQTT_DEBUG", "💥 Error en subscribe(): ${e.message}")
+                callback?.onFailure(null, e)
+            }
+        } else {
+            callback?.onSuccess(null)
+        }
+    }
+
+    fun unsubscribe(topic: String, callback: IMqttActionListener? = null) {
+        if (subscribedTopics.contains(topic)) {
+            try {
+                val token = mqttClient?.unsubscribe(topic)
+                token?.actionCallback = callback ?: object : IMqttActionListener {
+                    override fun onSuccess(asyncActionToken: IMqttToken?) {
+                        subscribedTopics.remove(topic)
+                    }
+                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                        Log.e("MQTT", "Error al desuscribir: ${exception?.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MQTT", "Error en unsubscribe(): ${e.message}")
+            }
+        }
     }
 
     fun disconnect() {
-        mqttClient?.disconnect()
+        try {
+            mqttClient?.disconnect()?.actionCallback = object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    Log.d("MQTT_DEBUG", "🔌 Desconexión exitosa")
+                }
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                    Log.e("MQTT_DEBUG", "❌ Error al desconectar: ${exception?.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MQTT_DEBUG", "💥 Excepción en disconnect(): ${e.message}")
+        }
+    }
+    private fun isConnected(): Boolean {
+        return mqttClient?.isConnected ?: false
+    }
+
+    // para la parte de faulstactivity
+    fun publish(topic: String, message: String) {
+        if (!isConnected()) {  // <-- AQUÍ TAMBIÉN
+            Log.e("MQTT_PROD", "⚠️ No se puede publicar: desconectado")
+            return
+        }
+        try {
+            mqttClient?.publish(topic, MqttMessage(message.toByteArray()))
+            Log.d("MQTT_PROD", "📤 Mensaje publicado en [$topic]")
+        } catch (e: Exception) {
+            Log.e("MQTT_PROD", "❌ Error al publicar: ${e.message}")
+        }
     }
 }

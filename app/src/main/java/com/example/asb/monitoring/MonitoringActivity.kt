@@ -8,6 +8,7 @@ import com.example.asb.R
 import com.example.asb.databinding.ActivityMonitoringBinding
 import com.example.asb.mqtt.MqttCallbackHandler
 import android.graphics.Color
+import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -15,6 +16,7 @@ import com.example.asb.models.DynamicEquipment
 import com.example.asb.mqtt.AppConfig
 import com.example.asb.mqtt.MqttProductionHelper
 import com.example.asb.mqtt.MqttTestHelper
+import com.example.asb.topic.MqttTopicManager
 import com.example.asb.utils.JsonParser
 
 
@@ -48,7 +50,15 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
 
         jsonParser = JsonParser()
         equipmentType = intent.getStringExtra("EQUIPMENT_TYPE") ?: "01"
-        mqttTopic = intent.getStringExtra("MQTT_TOPIC") ?: "003/0004/01/02/Datos"
+
+        mqttTopic = intent.getStringExtra("MQTT_TOPIC")
+            ?: MqttTopicManager.getMonitoringTopic(  // Fallback si no hay tópico previo
+                intent.getStringExtra("CLIENT_ID") ?: "client_default",
+                intent.getStringExtra("WORK_ORDER") ?: "project_default"
+            )
+        Log.d("MQTT_DEBUG", "Tópico generado: $mqttTopic")
+        Log.d("MQTT_DEBUG", "Modo TEST: ${AppConfig.isTestMode}")
+
         equipmentType = mqttTopic.split("/").getOrNull(2) ?: "01"
         setupGauge()
 
@@ -59,9 +69,11 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
 
         if (AppConfig.isTestMode) {
             mqttHelper = MqttTestHelper(this)
+            Log.d("MQTT_DEBUG", "Iniciando conexión TEST a broker...")
             mqttHelper.connect()
         } else {
-            mqttProductionHelper = MqttProductionHelper(this, mqttTopic)
+            mqttProductionHelper = MqttProductionHelper(this)
+            Log.d("MQTT_DEBUG", "Iniciando conexión PRODUCCIÓN a broker...")
             mqttProductionHelper.connect()
         }
     }
@@ -69,24 +81,22 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
     override fun onMessageReceived(topic: String, message: String) {
         runOnUiThread {
             val response = jsonParser.parseCombinedData(message) ?: return@runOnUiThread
-            // Manejar presión (solo para SVV)
-            if (equipmentType == "01") {
+
+            // Mostrar u ocultar el medidor basado en si hay datos de presión
+            if (response.presion != null) {  // ← Cambio clave aquí
                 binding.gaugeContainer.visibility = View.VISIBLE
                 binding.tvPressureStatus.visibility = View.VISIBLE
-
-                val pressure = response.presion ?: ultimaPresion ?: 2.5
-                updateGauge(pressure)
-
-                if (response.presion != null) ultimaPresion = pressure
+                updateGauge(response.presion)  // Usar el valor directamente
+                ultimaPresion = response.presion  // Actualizar último valor
             } else {
                 binding.gaugeContainer.visibility = View.GONE
                 binding.tvPressureStatus.visibility = View.GONE
             }
 
-            // Mostrar equipos
+            // Mostrar equipos (sin cambios)
             binding.equipmentContainer.removeAllViews()
             response.equipos.forEach { equipo ->
-                mostrarEquipo(equipo.apply { tipo = equipmentType })
+                mostrarEquipo(equipo)
             }
         }
     }
@@ -94,14 +104,14 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
     private fun mostrarEquipo(equipo: DynamicEquipment) {
         val itemView = LayoutInflater.from(this)
             .inflate(R.layout.item_pozo_dynamic, binding.equipmentContainer, false)
-
+        // Asignar imagen basada en el tipo (ahora con valores descriptivos)
         itemView.findViewById<ImageView>(R.id.ivEquipmentImage).setImageResource(
-            when(equipo.tipo) {
-                "01", "svv" -> R.mipmap.svv
-                "02" -> R.mipmap.bomba_pozo
-                "03" -> R.mipmap.hidro
-                "04" -> R.mipmap.carcamo_2b
-                else -> R.mipmap.asbombeo
+            when (equipo.tipo.uppercase()) {  // ← Usamos uppercase() para evitar case-sensitive
+                "SVV" -> R.mipmap.svv
+                "POZO" -> R.mipmap.bomba_pozo      // Ejemplo para futuro
+                "HIDRO" -> R.mipmap.hidro          // Ejemplo para futuro
+                "CARCAMO" -> R.mipmap.carcamo_2b   // Ejemplo para futuro
+                else -> R.mipmap.asbombeo          // Imagen por defecto
             }
         )
 
@@ -123,9 +133,16 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
 
     override fun onConnectionSuccess() {
         runOnUiThread {
+            Log.d("MQTT_DEBUG", "🔄🔄🔄 onConnectionSuccess() llamado")
             binding.ivConnectionIcon.setImageResource(R.drawable.ic_cloud_done)
             binding.tvConnectionStatus.text = getString(R.string.conectado)
             binding.connectionStatusContainer.setBackgroundColor(Color.parseColor("#E8F5E9")) // Verde claro
+            // ¡Agrega esto! (Suscribirse cuando la conexión esté lista)
+            if (AppConfig.isTestMode) {
+                mqttHelper.subscribe(mqttTopic) // <-- Suscripción al tópico dinámico
+            } else {
+                mqttProductionHelper.subscribe(mqttTopic)
+            }
         }
     }
 
@@ -137,10 +154,26 @@ class MonitoringActivity : AppCompatActivity(), MqttCallbackHandler {
         }
     }
 
-    override fun onDestroy() {
+    override fun onStop() {
+        super.onStop()
+        Log.d("MQTT_DEBUG", "onStop() - Desuscribiendo y desconectando")
+
         if (AppConfig.isTestMode) {
+            mqttHelper.unsubscribe(mqttTopic)  // Desuscribir del tópico
+            mqttHelper.disconnect()            // Opcional: desconectar completamente
+        } else {
+            mqttProductionHelper.unsubscribe(mqttTopic)
+            mqttProductionHelper.disconnect()
+        }
+    }
+
+    override fun onDestroy() {
+        // Limpieza adicional por si onStop() no se ejecutó
+        if (AppConfig.isTestMode) {
+            mqttHelper.unsubscribe(mqttTopic)
             mqttHelper.disconnect()
         } else {
+            mqttProductionHelper.unsubscribe(mqttTopic)
             mqttProductionHelper.disconnect()
         }
         super.onDestroy()
