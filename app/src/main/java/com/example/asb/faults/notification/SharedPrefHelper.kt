@@ -11,9 +11,4 @@ object SharedPrefHelper {
             .putString(KEY_LAST_ALARM, jsonAlarm)
             .apply()
     }
-
-    fun getLastAlarm(context: Context): String? {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_LAST_ALARM, null)
-    }
 }

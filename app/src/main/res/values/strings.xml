@@ -74,7 +74,6 @@
     <string name="falla">Alarmas</string>
     <string name="datos">Datos</string>
     <string name="conf">Conf</string>
-    <string name="bitacora">Bitácora</string>
     <string name="abrir_menu">Abrir menú</string>
 
 
@@ -107,23 +106,14 @@
     <string name="acerca_de">Acerca de</string>
     <string name="cerrar_sesion">Cerrar sesión</string>
     <string name="back_button_desc">Botón para regresar</string>
-    <string name="about_title">Acerca de</string>
-    <string name="website_text">www.asbombeo.com</string>
-    <string name="website_desc">Sitio web de la empresa</string>
-    <string name="phone_text">+52 734 108 9680</string>
-    <string name="phone_desc">Número de teléfono</string>
-    <string name="email_text">ventas@asbombeo.com</string>
-    <string name="email_desc">Correo electrónico</string>
-    <string name="version_1_0_0">Versión 1.0.0</string>
-    
+
 
     <!-- about .xml  -->
     <string name="back_button">Botón de retroceso</string>
     <string name="app_logo">Logo de la aplicación</string>
-    <string name="version_label">Versión %s</string>
+    <string name="version_label">Versión 1.0.0</string>
     <string name="contacto">Contacto</string>
     <string name="email_icon">Icono de email</string>
-    <string name="correo_electronico">Correo electrónico</string>
     <string name="company_email">ventas@asbombeo.com</string>
     <string name="phone_icon">Icono de teléfono</string>
     <string name="telefono">Teléfono</string>
@@ -138,22 +128,13 @@
     <string name="ingenier_a_innovaci_n_y_tecnolog_a_n_al_alcance_de_todos">Ingeniería, Innovación y Tecnología\n¡¡¡Al Alcance De Todos!!!</string>
 
 
-    <!-- order .xml  -->
+    <!-- Activity_select_work_order .xml  -->
     <string name="seleccione_su_orden_de_trabajo">Seleccione su orden de trabajo</string>
     <string name="no_hay_ordenes_disponibles">No hay órdenes de trabajo disponibles</string>
     <string name="continuar">Continuar</string>
     <string name="seleccione">Selecionar\n</string>
     <string name="warning_icon_desc">Icono de advertencia</string>
 
-    <!--AnomaliesAdapter.kt  -->
-    <string name="value_format">Valor: %1$.2f</string>
-    <string name="date_format">Fecha: %1$s</string>
-    <string name="voltage_low">Voltaje bajo</string>
-    <string name="voltage_high">Voltaje alto</string>
-    <string name="pressure_low">Presión baja</string>
-    <string name="pressure_high">Presión alta</string>
-    <!--AlarmAdapter.kt  -->
-    <string name="id_with_placeholder">ID: %d</string>
     <!--activity_data.xml  -->
     <string name="seleccione_equipo">Seleccione un equipo para ver su historial</string>
 
@@ -163,6 +144,7 @@
     <string name="filtre_por_bomba">Presiona \"Bomba 1\" o \"Bomba 2\" para más detalles</string>
     <string name="ver_grafico">Ver Gráfico</string>
     <string name="volver">Volver</string>
+    <string name="id_with_placeholder">ID: %d</string>
 
     <!--Activity_data.xml  -->
     <string name="equipo_1">EQUIPO 1</string>

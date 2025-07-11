@@ -76,7 +76,11 @@
                     android:layout_marginTop="8dp"
                     android:text="@string/about_company_description"
                     android:textColor="#CCFFFFFF"
-                    android:textSize="14sp" />
+                    android:textSize="14sp"
+                    android:gravity="center"
+                    android:textAlignment="center"
+                    android:paddingLeft="16dp"
+                    android:paddingRight="16dp"/>
 
             </LinearLayout>
 
