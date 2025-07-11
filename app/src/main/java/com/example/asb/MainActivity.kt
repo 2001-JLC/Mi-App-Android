@@ -151,12 +151,17 @@ class MainActivity : AppCompatActivity() {
     }
     //para iniciar las notificaciones
     private fun startMqttForegroundService() {
-        stopService(Intent(this, MqttProductionForegroundService::class.java))
-        val intent = Intent(this, MqttProductionForegroundService::class.java)
+        val clientId = intent.getStringExtra("CLIENT_ID") ?: "client_default"
+        val projectId = intent.getStringExtra("WORK_ORDER") ?: "project_default"
+        val serviceIntent = Intent(this, MqttProductionForegroundService::class.java).apply {
+            putExtra("CLIENT_ID", clientId)
+            putExtra("WORK_ORDER", projectId)
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
+            startForegroundService(serviceIntent)
         } else {
-            startService(intent)
+            startService(serviceIntent)
         }
     }
 

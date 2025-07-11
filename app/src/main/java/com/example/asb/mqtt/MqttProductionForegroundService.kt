@@ -14,21 +14,47 @@ import androidx.core.app.NotificationCompat
 import com.example.asb.R
 import com.example.asb.faults.notification.MqttNotificationManager
 import com.example.asb.faults.notification.SharedPrefHelper
+import com.example.asb.topic.MqttTopicManager
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttToken
 
 class MqttProductionForegroundService : Service() {
 
     private lateinit var mqttHelper: MqttProductionHelper
+    private var isSubscribed = false
     private val notificationManager by lazy { MqttNotificationManager(this) }
     private var isConnected = false
     private val reconnectHandler = Handler(Looper.getMainLooper())
+    private lateinit var alarmTopic: String
+    // Variables para almacenar los parámetros
+    private var clientId: String = "client_default"
+    private var projectId: String = "project_default"
 
-    // Tópico fijo para alarmas (ajusta si es necesario)
-    private val alarmTopic = "asb/telemetria/client2/proyect391/alarmas/notification"
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent?.let {
+            val newClientId = it.getStringExtra("CLIENT_ID") ?: "client_default"
+            val newProjectId = it.getStringExtra("WORK_ORDER") ?: "project_default"
+
+            if (newClientId != clientId || newProjectId != projectId) {
+                clientId = newClientId
+                projectId = newProjectId
+                alarmTopic = MqttTopicManager.getAlarmsNotificationTopic(clientId, projectId)
+                Log.d("MQTT_TOPIC", "Tópico actualizado: $alarmTopic")
+
+                // Solo reconectar si ya está inicializado
+                if (::mqttHelper.isInitialized) {
+                    mqttHelper.disconnect()
+                    setupMqtt()
+                }
+            }
+        }
+        return START_STICKY
+    }
 
     override fun onCreate() {
         super.onCreate()
+
+        alarmTopic = MqttTopicManager.getAlarmsNotificationTopic(clientId, projectId)
         setupMqtt()
         startForeground(NOTIFICATION_ID, createNotification("Conectando a producción..."))
     }
@@ -46,6 +72,7 @@ class MqttProductionForegroundService : Service() {
                 isConnected = true
                 mqttHelper.subscribe(alarmTopic, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
+                        isSubscribed = true
                         Log.d("MQTT", "✅ Suscripción exitosa a $alarmTopic")
                         // Recrear canal de notificaciones
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -54,10 +81,10 @@ class MqttProductionForegroundService : Service() {
                             })
                         }
                         updateNotification("Conexión activa")
-                        requestPendingAlarms()
                     }
 
                     override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                        isSubscribed = false
                         Log.e("MQTT", "❌ Error en suscripción: ${exception?.message}")
                         scheduleReconnect()
                     }
@@ -66,6 +93,7 @@ class MqttProductionForegroundService : Service() {
 
             override fun onConnectionLost(cause: Throwable) {
                 isConnected = false
+                isSubscribed = false
                 updateNotification("Desconectado - Reconectando...")
                 scheduleReconnect()
             }
@@ -73,16 +101,6 @@ class MqttProductionForegroundService : Service() {
         mqttHelper.connect()
     }
 
-    private fun requestPendingAlarms() {
-        try {
-            mqttHelper.publish(alarmTopic.replace("/notification", "/get"), "get_alarms")
-            SharedPrefHelper.getLastAlarm(this@MqttProductionForegroundService)?.let {
-                notificationManager.showNotificationFromJson(it)
-            }
-        } catch (e: Exception) {
-            Log.e("MQTT", "Error al solicitar alarmas pendientes", e)
-        }
-    }
     private fun scheduleReconnect() {
         reconnectHandler.postDelayed({
             if (!isConnected) {

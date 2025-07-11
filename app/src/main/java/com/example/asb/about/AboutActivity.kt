@@ -8,7 +8,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.asb.R
-import com.github.mikephil.charting.BuildConfig
 
 class AboutActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,7 +15,7 @@ class AboutActivity : AppCompatActivity() {
         setContentView(R.layout.activity_about)
 
         // Versión
-        findViewById<TextView>(R.id.tvVersion).text = "Versión ${BuildConfig.VERSION_NAME}"
+        findViewById<TextView>(R.id.tvVersion).text = "Versión 1.0.0"  // Texto fijo
 
         // Botón back
         findViewById<ImageButton>(R.id.btnBack).setOnClickListener { finish() }
@@ -34,8 +33,7 @@ class AboutActivity : AppCompatActivity() {
         // Email
         findViewById<LinearLayout>(R.id.btnEmail).setOnClickListener {
             val intent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:ventas@asbombeo.com")  // ¡Agrega "mailto:"!
-                putExtra(Intent.EXTRA_SUBJECT, "Consulta desde la app")  // Asunto opcional
+                data = Uri.parse("mailto:ventas@asbombeo.com")  // mailto:para que sea clickable y rediriga al correo electronico
             }
             startActivity(intent)
         }

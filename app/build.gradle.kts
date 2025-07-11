@@ -44,7 +44,7 @@ android {
 
 dependencies {
 
-    implementation(libs.mpandroidchart)
+    implementation(libs.mpandroidchart)  //Para poder utilizar completamente el grafrico agregar  lo que tiene settings.gradle
     implementation(libs.mqtt.client)
     implementation(libs.mqtt.android.service)
     implementation(libs.retrofit)

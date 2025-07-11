@@ -7,6 +7,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
+    android:background="@color/black"
     tools:context=".MainActivity">
 
     <!-- CONTENIDO PRINCIPAL (primer hijo del DrawerLayout) -->
@@ -124,7 +125,19 @@
                         android:id="@+id/tvProjectType"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textSize="16sp"/>
+                        android:textSize="16sp"
+                        android:layout_marginBottom="20dp"/>
+
+                    <!-- Imagen del cliente -->
+                    <ImageView
+                        android:id="@+id/ivClientLogo"
+                        android:layout_width="200dp"
+                        android:layout_height="200dp"
+                        android:scaleType="centerCrop"
+                        android:src="@mipmap/logo_colinas_xochitepec"
+                        android:layout_marginBottom="16dp"
+                        android:layout_gravity="center"/>
+
                 </LinearLayout>
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.core.widget.NestedScrollView>

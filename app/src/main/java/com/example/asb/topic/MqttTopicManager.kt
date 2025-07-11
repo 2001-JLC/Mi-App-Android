@@ -14,8 +14,8 @@ object MqttTopicManager {
     }
 
     // Para Alarmas (MqttForegroundService - futuro)
-    fun getAlarmsTopic(clientId: String, projectId: String): String {
-        return "$BASE_TOPIC/proyect$clientId/proyect$projectId/alarmas/notificacion"
+    fun getAlarmsNotificationTopic(clientId: String, projectId: String): String {
+        return "$BASE_TOPIC/client$clientId/proyect$projectId/alarmas/notification"
     }
 
     // Alarmas - Solicitud (FaultsActivity)
