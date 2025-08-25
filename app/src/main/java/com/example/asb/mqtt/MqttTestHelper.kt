@@ -5,7 +5,7 @@ import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 class MqttTestHelper(private val callback: MqttCallbackHandler) {
-    private val testBrokerUrl = "tcp://broker.hivemq.com:1883"
+    private val testBrokerUrl = "tcp://test.mosquitto.org:1883"
     private var mqttClient: MqttAsyncClient? = null
     private var subscribedTopics = mutableSetOf<String>()
 
